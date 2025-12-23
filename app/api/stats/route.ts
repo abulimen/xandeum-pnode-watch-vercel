@@ -120,7 +120,7 @@ function transformPodToNode(pod: RawPod, responseTime: number, maxTimestamp: num
 export async function GET() {
     try {
         // Call the internal pRPC API with absolute URL (server-side needs this)
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3000';
 
         let response;
         try {
