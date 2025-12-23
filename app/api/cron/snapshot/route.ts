@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import http from 'http';
 import { enrichNodesWithStakingData } from '@/lib/services/analyticsService';
-import { createSnapshot, insertNodeSnapshots, pruneOldSnapshots } from '@/lib/db/queries';
+// DB imports moved to inside handler to catch initialization errors
 import { processAlerts } from '@/lib/services/alertService';
 import { RawPodData, PNode } from '@/types/pnode';
 
@@ -299,6 +299,23 @@ export async function GET(request: NextRequest) {
 
         console.log(`[cron/snapshot] Stats - avgUptime: ${avgUptime.toFixed(2)}%, avgCredits: ${avgCredits.toFixed(0)}`);
 
+        // Dynamically import DB functions to catch initialization errors (e.g. read-only FS)
+        let createSnapshot, insertNodeSnapshots, pruneOldSnapshots;
+        try {
+            const dbQueries = await import('@/lib/db/queries');
+            createSnapshot = dbQueries.createSnapshot;
+            insertNodeSnapshots = dbQueries.insertNodeSnapshots;
+            pruneOldSnapshots = dbQueries.pruneOldSnapshots;
+        } catch (dbError) {
+            console.error('[cron/snapshot] Database initialization failed:', dbError);
+            return NextResponse.json({
+                success: false,
+                error: 'Database initialization failed',
+                details: dbError instanceof Error ? dbError.message : String(dbError),
+                stack: dbError instanceof Error ? dbError.stack : undefined
+            }, { status: 500 });
+        }
+
         // Create snapshot
         const snapshotId = createSnapshot({
             total_nodes: nodesWithCredits.length,
@@ -365,6 +382,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
         }, { status: 500 });
     }
 }
