@@ -191,13 +191,14 @@ export function InstallPromptModal() {
                             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                                 <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">2</div>
                                 <div>
-                                    <p className="font-medium text-sm">Tap "Install app"</p>
+                                    <p className="font-medium text-sm">Tap "Add to Home screen"</p>
+                                    <p className="text-xs text-muted-foreground">or "Install app" if available</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                                 <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">3</div>
                                 <div>
-                                    <p className="font-medium text-sm">Tap "Install"</p>
+                                    <p className="font-medium text-sm">Tap "Add" to confirm</p>
                                 </div>
                             </div>
                         </TabsContent>
@@ -206,16 +207,23 @@ export function InstallPromptModal() {
                             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                                 <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">1</div>
                                 <div>
-                                    <p className="font-medium text-sm">Look for the install icon</p>
+                                    <p className="font-medium text-sm">Open Chrome menu</p>
                                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                        <Download className="h-3 w-3" /> in your browser's address bar
+                                        <MoreVertical className="h-3 w-3" /> Click the 3 dots (top right)
                                     </p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                                 <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">2</div>
                                 <div>
-                                    <p className="font-medium text-sm">Click "Install"</p>
+                                    <p className="font-medium text-sm">Click "Install pNode Watch..."</p>
+                                    <p className="text-xs text-muted-foreground">or "Save and Share" → "Create shortcut"</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">3</div>
+                                <div>
+                                    <p className="font-medium text-sm">Click "Install" to confirm</p>
                                 </div>
                             </div>
                         </TabsContent>
