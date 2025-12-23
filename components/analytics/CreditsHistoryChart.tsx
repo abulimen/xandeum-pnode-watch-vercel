@@ -195,9 +195,22 @@ export function CreditsHistoryChart({
                     </div>
                 ) : (
                     <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm bg-muted/30 rounded-lg border border-dashed">
-                        <TrendingUp className="h-8 w-8 mb-2 opacity-20" />
-                        <p>No historical data yet</p>
-                        <p className="text-xs opacity-70">Data will appear as credits are tracked</p>
+                        {/* Show loading animation if currentValue is not yet available */}
+                        {currentValue === undefined ? (
+                            <>
+                                <div className="relative mb-3">
+                                    <div className="h-10 w-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+                                </div>
+                                <p>Loading credits data...</p>
+                                <p className="text-xs opacity-70">Please wait while we fetch the latest data</p>
+                            </>
+                        ) : (
+                            <>
+                                <TrendingUp className="h-8 w-8 mb-2 opacity-20" />
+                                <p>No historical data yet</p>
+                                <p className="text-xs opacity-70">Data will appear as credits are tracked</p>
+                            </>
+                        )}
                     </div>
                 )}
             </CardContent>
