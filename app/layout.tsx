@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
+import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 import { CopilotWidget } from "@/components/copilot/CopilotWidget";
 import { PriceTicker } from "@/components/PriceTicker";
 import { TourButton } from "@/components/tour/TourButton";
@@ -60,6 +61,7 @@ export default function RootLayout({
                 className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
             >
                 <Providers>
+                    <ServiceWorkerRegistration />
                     {children}
                     <Toaster />
                     <InstallBanner />
