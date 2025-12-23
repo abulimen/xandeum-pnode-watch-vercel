@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode, useState } from 'react';
 import { ThemeProvider } from 'next-themes';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
+import { AppLoadingProvider } from '@/contexts/AppLoadingContext';
 
 interface ProvidersProps {
     children: ReactNode;
@@ -32,13 +33,15 @@ export function Providers({ children }: ProvidersProps) {
         <QueryClientProvider client={queryClient}>
             <ThemeProvider
                 attribute="class"
-                defaultTheme="system"
+                defaultTheme="dark"
                 enableSystem
                 disableTransitionOnChange
             >
-                <FavoritesProvider>
-                    {children}
-                </FavoritesProvider>
+                <AppLoadingProvider minLoadingTime={1800}>
+                    <FavoritesProvider>
+                        {children}
+                    </FavoritesProvider>
+                </AppLoadingProvider>
             </ThemeProvider>
         </QueryClientProvider>
     );

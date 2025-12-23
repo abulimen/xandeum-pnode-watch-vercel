@@ -9,6 +9,8 @@ import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistr
 import { CopilotWidget } from "@/components/copilot/CopilotWidget";
 import { PriceTicker } from "@/components/PriceTicker";
 import { TourButton } from "@/components/tour/TourButton";
+import { PagePreloader } from "@/components/PagePreloader";
+import { DataLoadingSignal } from "@/components/DataLoadingSignal";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -69,6 +71,8 @@ export default function RootLayout({
                 className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
             >
                 <Providers>
+                    <PagePreloader />
+                    <DataLoadingSignal />
                     <ServiceWorkerRegistration />
                     {children}
                     <Toaster />
