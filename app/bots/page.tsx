@@ -2,16 +2,14 @@
  * Bots Page - Telegram and Discord Bot Promotion
  */
 
-import { Metadata } from 'next';
+'use client';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { ExternalLink, MessageCircle, Bot, Zap, BarChart3, Coins, Search, Trophy } from 'lucide-react';
-
-export const metadata: Metadata = {
-    title: 'Bots | pNode Watch',
-    description: 'Get Xandeum network stats directly in Telegram and Discord with our official bots.',
-};
 
 // Discord icon component
 function DiscordIcon({ className }: { className?: string }) {
@@ -41,8 +39,9 @@ const commands = [
 
 export default function BotsPage() {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-            <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted/20">
+            <Header />
+            <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
                 {/* Hero Section */}
                 <div className="text-center mb-12">
                     <div className="flex justify-center gap-4 mb-6">
@@ -220,7 +219,9 @@ export default function BotsPage() {
                         </Button>
                     </div>
                 </div>
-            </div>
+            </main>
+            <Footer />
         </div>
     );
 }
+
