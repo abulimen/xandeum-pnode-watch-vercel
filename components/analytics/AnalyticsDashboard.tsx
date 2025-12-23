@@ -16,6 +16,8 @@ import { AlertsPanel } from '@/components/analytics/AlertsPanel';
 import { CreditsHistoryChart } from '@/components/analytics/CreditsHistoryChart';
 import { NetworkHealthScore } from '@/components/analytics/NetworkHealthScore';
 import { GeographicDistribution } from '@/components/analytics/GeographicDistribution';
+import { BadgeDistribution } from '@/components/analytics/BadgeDistribution';
+import { NetworkTraffic } from '@/components/analytics/NetworkTraffic';
 import { NetworkSummary } from '@/components/NetworkSummary';
 import { useNodes, useNetworkStats, useNodeLocations } from '@/hooks';
 import { enrichNodesWithStakingData } from '@/lib/services/analyticsService';
@@ -205,6 +207,14 @@ export function AnalyticsDashboard() {
                     </div>
                     <div className="lg:col-span-2">
                         <AlertsPanel issues={issues} isLoading={isLoading} />
+                    </div>
+
+                    {/* Row 5: Badge Distribution + Network Traffic - Side by Side */}
+                    <div className="lg:col-span-2">
+                        <BadgeDistribution nodes={enrichedNodes} isLoading={isLoading} />
+                    </div>
+                    <div className="lg:col-span-2">
+                        <NetworkTraffic nodes={enrichedNodes} isLoading={isLoading} />
                     </div>
 
                 </div>
