@@ -97,6 +97,15 @@ const dashboardTourStepsDesktop: DriveStep[] = [
             side: 'top',
             align: 'center'
         }
+    },
+    {
+        element: '[data-tour="tour-button"]',
+        popover: {
+            title: '❓ Need Help?',
+            description: 'Click this button anytime to get a guided tour of any page you\'re on!',
+            side: 'right',
+            align: 'center'
+        }
     }
 ];
 
@@ -149,6 +158,15 @@ const dashboardTourStepsMobile: DriveStep[] = [
             title: '💰 Price Ticker',
             description: 'Live XAND price. Tap "Buy" to trade.',
             side: 'top',
+            align: 'center'
+        }
+    },
+    {
+        element: '[data-tour="tour-button"]',
+        popover: {
+            title: '❓ Need Help?',
+            description: 'Tap this button anytime for a guided tour of any page!',
+            side: 'right',
             align: 'center'
         }
     }

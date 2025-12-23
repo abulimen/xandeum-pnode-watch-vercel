@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
+import { InstallPromptModal } from "@/components/pwa/InstallPromptModal";
 import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 import { CopilotWidget } from "@/components/copilot/CopilotWidget";
 import { PriceTicker } from "@/components/PriceTicker";
@@ -65,6 +66,7 @@ export default function RootLayout({
                     {children}
                     <Toaster />
                     <InstallBanner />
+                    <InstallPromptModal />
                     <PriceTicker />
                     <CopilotWidget />
                     <TourButton />

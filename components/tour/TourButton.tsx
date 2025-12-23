@@ -30,7 +30,13 @@ export function TourButton() {
         return pathname.replace(/^\//, '').replace(/\//g, '-') || 'home';
     };
 
+    // Check if this is the dashboard/home page
+    const isDashboard = pathname === '/' || pathname === '';
+
     useEffect(() => {
+        // Only show auto-prompt on dashboard
+        if (!isDashboard) return;
+
         // Check if this is the first visit to this page
         const tourId = getTourId();
         if (!hasCompletedTour(tourId)) {
@@ -41,7 +47,7 @@ export function TourButton() {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [pathname]);
+    }, [pathname, isDashboard]);
 
     const handleStartTour = () => {
         setShowPrompt(false);
@@ -140,6 +146,7 @@ export function TourButton() {
                         onClick={handleStartTour}
                         className="h-10 w-10 rounded-full shadow-lg bg-card/80 backdrop-blur-sm border-border/50 hover:border-primary/50 hover:bg-primary/5"
                         title="Start page tour"
+                        data-tour="tour-button"
                     >
                         <HelpCircle className="h-5 w-5 text-muted-foreground" />
                     </Button>
