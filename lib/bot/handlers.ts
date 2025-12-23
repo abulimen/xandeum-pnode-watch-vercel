@@ -169,7 +169,7 @@ export async function handlePrice(baseUrl: string): Promise<BotResponse> {
     const data = await fetchTokenPrice(baseUrl);
 
     if (!data || !data.price) {
-        return { text: '❌ Failed to fetch token price. Please try again later.' };
+        return { text: '❌ Failed to fetch token price. Please try again later. --> ' + baseUrl };
     }
 
     const changeEmoji = data.change24h >= 0 ? '📈' : '📉';
