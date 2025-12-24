@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, ExternalLink, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ interface TokenData {
 }
 
 export function PriceTicker() {
+    const pathname = usePathname();
     const [tokenData, setTokenData] = useState<TokenData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -54,6 +56,9 @@ export function PriceTicker() {
         const prefix = change >= 0 ? '+' : '';
         return `${prefix}${change.toFixed(2)}%`;
     };
+
+    // Hide on map page (interferes with fullscreen map)
+    if (pathname === '/map') return null;
 
     if (error || isLoading) return null;
     if (!tokenData) return null;
