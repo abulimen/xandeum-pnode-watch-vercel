@@ -9,6 +9,7 @@ import { ReactNode, useState } from 'react';
 import { ThemeProvider } from 'next-themes';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
 import { AppLoadingProvider } from '@/contexts/AppLoadingContext';
+import { NetworkProvider } from '@/contexts/NetworkContext';
 
 interface ProvidersProps {
     children: ReactNode;
@@ -38,11 +39,14 @@ export function Providers({ children }: ProvidersProps) {
                 disableTransitionOnChange
             >
                 <AppLoadingProvider minLoadingTime={1800}>
-                    <FavoritesProvider>
-                        {children}
-                    </FavoritesProvider>
+                    <NetworkProvider>
+                        <FavoritesProvider>
+                            {children}
+                        </FavoritesProvider>
+                    </NetworkProvider>
                 </AppLoadingProvider>
             </ThemeProvider>
         </QueryClientProvider>
     );
 }
+

@@ -39,6 +39,7 @@ import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { InstallAppButton } from '@/components/pwa/InstallAppButton';
+import { NetworkToggle } from '@/components/NetworkToggle';
 import { cn } from '@/lib/utils';
 import {
     Dialog,
@@ -317,6 +318,14 @@ export function Header({
 
                     {/* Right Side Actions */}
                     <div className="flex items-center gap-2">
+                        {/* Network Toggle */}
+                        <div className="hidden lg:block">
+                            <NetworkToggle />
+                        </div>
+                        <div className="hidden sm:block lg:hidden">
+                            <NetworkToggle compact />
+                        </div>
+
                         {/* Search Button */}
                         <Button
                             variant="ghost"
