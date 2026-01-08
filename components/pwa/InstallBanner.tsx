@@ -15,6 +15,21 @@ interface BeforeInstallPromptEvent extends Event {
     userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+// Check if user dismissed the banner (30-day cooldown)
+function isDismissed(): boolean {
+    if (typeof window === 'undefined') return true;
+    const dismissed = localStorage.getItem('pwa-install-dismissed');
+    if (!dismissed) return false;
+    const dismissedAt = parseInt(dismissed, 10);
+    // Don't show for 30 days after dismissal
+    if (Date.now() - dismissedAt < 30 * 24 * 60 * 60 * 1000) {
+        return true;
+    }
+    // Dismissal expired - clear it
+    localStorage.removeItem('pwa-install-dismissed');
+    return false;
+}
+
 export function InstallBanner({ className }: { className?: string }) {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [showBanner, setShowBanner] = useState(false);
@@ -27,22 +42,16 @@ export function InstallBanner({ className }: { className?: string }) {
             return;
         }
 
-        // Check if dismissed recently - if so, don't even listen for the event
-        const dismissed = localStorage.getItem('pwa-install-dismissed');
-        if (dismissed) {
-            const dismissedAt = parseInt(dismissed, 10);
-            // Don't show for 30 days after dismissal
-            if (Date.now() - dismissedAt < 30 * 24 * 60 * 60 * 1000) {
-                // Still dismissed - don't set up the listener at all
-                return;
-            }
-            // Dismissal expired - clear it
-            localStorage.removeItem('pwa-install-dismissed');
+        // Check if dismissed - if so, don't even listen for the event
+        if (isDismissed()) {
+            return;
         }
 
         // Listen for install prompt (only if not dismissed)
         const handleBeforeInstall = (e: Event) => {
             e.preventDefault();
+            // Double-check dismissal status in case it changed
+            if (isDismissed()) return;
             setDeferredPrompt(e as BeforeInstallPromptEvent);
             setShowBanner(true);
         };
