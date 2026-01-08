@@ -5,7 +5,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { Bot, User, Copy, Check, ExternalLink, RefreshCw, Pencil } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export interface Message {
     id: string;
@@ -37,17 +36,17 @@ function CodeBlock({ children, className }: { children: React.ReactNode; classNa
 
     return (
         <div className="relative group my-3">
-            <div className="flex items-center justify-between bg-zinc-800 dark:bg-zinc-900 text-zinc-400 text-xs px-4 py-2 rounded-t-lg border-b border-zinc-700">
-                <span className="font-mono">{language}</span>
+            <div className="flex items-center justify-between bg-black/40 text-white/40 text-[10px] px-3 py-1.5 rounded-t-lg border-b border-white/5">
+                <span className="font-mono uppercase tracking-wide">{language}</span>
                 <button
                     onClick={handleCopy}
                     className="flex items-center gap-1 hover:text-white transition-colors"
                 >
-                    {copied ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                     <span>{copied ? 'Copied!' : 'Copy'}</span>
                 </button>
             </div>
-            <pre className="bg-zinc-900 dark:bg-zinc-950 text-zinc-100 p-4 rounded-b-lg overflow-x-auto text-sm font-mono">
+            <pre className="bg-black/60 text-white/80 p-3 rounded-b-lg overflow-x-auto text-xs font-mono">
                 <code>{codeString}</code>
             </pre>
         </div>
@@ -57,7 +56,7 @@ function CodeBlock({ children, className }: { children: React.ReactNode; classNa
 // Inline Code
 function InlineCode({ children }: { children: React.ReactNode }) {
     return (
-        <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-sm font-mono">
+        <code className="bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded text-[11px] font-mono">
             {children}
         </code>
     );
@@ -71,10 +70,10 @@ function CustomLink({ href, children }: { href?: string; children: React.ReactNo
             href={href}
             target={isExternal ? '_blank' : undefined}
             rel={isExternal ? 'noopener noreferrer' : undefined}
-            className="text-primary hover:text-primary/80 underline underline-offset-2 inline-flex items-center gap-1"
+            className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 inline-flex items-center gap-0.5"
         >
             {children}
-            {isExternal && <ExternalLink className="h-3 w-3" />}
+            {isExternal && <ExternalLink className="h-2.5 w-2.5" />}
         </a>
     );
 }
@@ -89,46 +88,42 @@ const markdownComponents = {
     },
     a: ({ href, children }: any) => <CustomLink href={href}>{children}</CustomLink>,
     p: ({ children }: any) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-    ul: ({ children }: any) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
-    ol: ({ children }: any) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
+    ul: ({ children }: any) => <ul className="list-disc list-inside mb-2 space-y-0.5 text-white/70">{children}</ul>,
+    ol: ({ children }: any) => <ol className="list-decimal list-inside mb-2 space-y-0.5 text-white/70">{children}</ol>,
     li: ({ children }: any) => <li className="leading-relaxed">{children}</li>,
-    h1: ({ children }: any) => <h1 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h1>,
-    h2: ({ children }: any) => <h2 className="text-sm font-bold mb-2 mt-2 first:mt-0">{children}</h2>,
-    h3: ({ children }: any) => <h3 className="text-sm font-semibold mb-1 mt-2 first:mt-0">{children}</h3>,
+    h1: ({ children }: any) => <h1 className="text-sm font-bold mb-2 mt-3 first:mt-0 text-white">{children}</h1>,
+    h2: ({ children }: any) => <h2 className="text-sm font-bold mb-2 mt-2 first:mt-0 text-white">{children}</h2>,
+    h3: ({ children }: any) => <h3 className="text-xs font-semibold mb-1 mt-2 first:mt-0 text-white">{children}</h3>,
     blockquote: ({ children }: any) => (
-        <blockquote className="border-l-3 border-primary/50 pl-3 italic text-muted-foreground my-2 text-sm">
+        <blockquote className="border-l-2 border-emerald-500/50 pl-3 italic text-white/50 my-2 text-xs">
             {children}
         </blockquote>
     ),
     table: ({ children }: any) => (
         <div className="overflow-x-auto my-2">
-            <table className="min-w-full border border-border rounded-lg overflow-hidden text-sm">
+            <table className="min-w-full border border-white/10 rounded-lg overflow-hidden text-xs">
                 {children}
             </table>
         </div>
     ),
     th: ({ children }: any) => (
-        <th className="bg-muted px-2 py-1.5 text-left text-xs font-semibold border-b border-border">
+        <th className="bg-white/5 px-2 py-1.5 text-left text-[10px] font-semibold border-b border-white/10 text-white/70">
             {children}
         </th>
     ),
     td: ({ children }: any) => (
-        <td className="px-2 py-1.5 text-xs border-b border-border">{children}</td>
+        <td className="px-2 py-1.5 text-[11px] border-b border-white/5 text-white/60">{children}</td>
     ),
-    hr: () => <hr className="my-3 border-border" />,
-    strong: ({ children }: any) => <strong className="font-semibold text-foreground">{children}</strong>,
-    em: ({ children }: any) => <em className="italic">{children}</em>,
+    hr: () => <hr className="my-3 border-white/10" />,
+    strong: ({ children }: any) => <strong className="font-semibold text-white">{children}</strong>,
+    em: ({ children }: any) => <em className="italic text-white/80">{children}</em>,
 };
 
-// Regex to match node IDs in format: 8-char-pubkey-hash (e.g., XKZpmT4L-248235)
+// Regex to match node IDs
 const NODE_ID_REGEX = /\b([A-HJ-NP-Za-km-z1-9]{8}-[0-9a-zA-Z]+)\b/g;
 
-// Convert node IDs in content to markdown links
 function processNodeLinks(content: string): string {
-    return content.replace(NODE_ID_REGEX, (match) => {
-        // Create a clickable link to the node details page
-        return `[${match}](/nodes/${match})`;
-    });
+    return content.replace(NODE_ID_REGEX, (match) => `[${match}](/nodes/${match})`);
 }
 
 export function CopilotMessage({ message, isLast, onCopy, onRegenerate, onEdit, showActions = true }: CopilotMessageProps) {
@@ -161,18 +156,27 @@ export function CopilotMessage({ message, isLast, onCopy, onRegenerate, onEdit, 
             "flex w-full gap-3 group",
             isUser ? "flex-row-reverse" : "flex-row"
         )}>
+            {/* Avatar */}
             <div className={cn(
-                "flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-full border shadow-sm",
-                isUser ? "bg-primary text-primary-foreground" : "bg-muted"
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                isUser
+                    ? "bg-gradient-to-br from-emerald-500 to-emerald-600"
+                    : "bg-emerald-500/10 border border-emerald-500/20"
             )}>
-                {isUser ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
+                {isUser ? (
+                    <User className="h-4 w-4 text-white" />
+                ) : (
+                    <Bot className="h-4 w-4 text-emerald-500" />
+                )}
             </div>
-            <div className="flex-1 space-y-1">
+
+            {/* Content */}
+            <div className="flex-1 space-y-1 min-w-0">
                 <div className={cn(
-                    "overflow-hidden rounded-xl px-3 py-2.5 text-sm shadow-sm",
+                    "overflow-hidden rounded-xl px-3 py-2.5 text-[13px]",
                     isUser
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/50 border border-border"
+                        ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white"
+                        : "bg-white/5 border border-white/5 text-white/80"
                 )}>
                     {isUser ? (
                         isEditing ? (
@@ -180,16 +184,22 @@ export function CopilotMessage({ message, isLast, onCopy, onRegenerate, onEdit, 
                                 <textarea
                                     value={editContent}
                                     onChange={(e) => setEditContent(e.target.value)}
-                                    className="w-full bg-primary-foreground text-primary rounded p-2 text-sm resize-none min-h-[60px]"
+                                    className="w-full bg-white/20 text-white rounded-lg p-2 text-sm resize-none min-h-[60px] focus:outline-none"
                                     autoFocus
                                 />
                                 <div className="flex gap-2 justify-end">
-                                    <Button size="sm" variant="ghost" onClick={handleCancelEdit} className="h-7 text-xs text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10">
+                                    <button
+                                        onClick={handleCancelEdit}
+                                        className="px-3 py-1 text-[11px] text-white/70 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                                    >
                                         Cancel
-                                    </Button>
-                                    <Button size="sm" onClick={handleEdit} className="h-7 text-xs bg-primary-foreground text-primary hover:bg-primary-foreground/90">
+                                    </button>
+                                    <button
+                                        onClick={handleEdit}
+                                        className="px-3 py-1 text-[11px] bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors"
+                                    >
                                         Send
-                                    </Button>
+                                    </button>
                                 </div>
                             </div>
                         ) : (
@@ -215,41 +225,35 @@ export function CopilotMessage({ message, isLast, onCopy, onRegenerate, onEdit, 
                     )}>
                         {/* Copy button - for assistant messages */}
                         {!isUser && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                            <button
                                 onClick={handleCopy}
+                                className="flex items-center gap-1 px-2 py-1 text-[10px] text-white/30 hover:text-white/60 rounded-md hover:bg-white/5 transition-colors"
                             >
-                                {copied ? <Check className="h-3 w-3 mr-1 text-green-500" /> : <Copy className="h-3 w-3 mr-1" />}
+                                {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                                 {copied ? 'Copied' : 'Copy'}
-                            </Button>
+                            </button>
                         )}
 
                         {/* Regenerate button - only for last assistant message */}
                         {!isUser && isLast && onRegenerate && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                            <button
                                 onClick={onRegenerate}
+                                className="flex items-center gap-1 px-2 py-1 text-[10px] text-white/30 hover:text-white/60 rounded-md hover:bg-white/5 transition-colors"
                             >
-                                <RefreshCw className="h-3 w-3 mr-1" />
-                                Regenerate
-                            </Button>
+                                <RefreshCw className="h-3 w-3" />
+                                Retry
+                            </button>
                         )}
 
                         {/* Edit button - for user messages */}
                         {isUser && onEdit && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+                            <button
                                 onClick={() => setIsEditing(true)}
+                                className="flex items-center gap-1 px-2 py-1 text-[10px] text-white/50 hover:text-white rounded-md hover:bg-white/10 transition-colors"
                             >
-                                <Pencil className="h-3 w-3 mr-1" />
+                                <Pencil className="h-3 w-3" />
                                 Edit
-                            </Button>
+                            </button>
                         )}
                     </div>
                 )}
