@@ -220,7 +220,7 @@ export function CopilotWidget() {
                         transition={{ duration: 0.2, ease: 'easeOut' }}
                         className={cn(
                             "fixed z-50",
-                            "inset-0 sm:inset-auto sm:bottom-20 sm:right-4",
+                            "top-14 inset-x-0 bottom-0 sm:inset-auto sm:top-auto sm:bottom-20 sm:right-4",
                             "sm:w-[380px] sm:h-[520px]"
                         )}
                     >
