@@ -5,8 +5,7 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent } from '@/components/ui/card';
-import { BookOpen, Menu, X, ExternalLink } from 'lucide-react';
+import { BookOpen, Menu, X, ExternalLink, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -15,111 +14,199 @@ import { useNodes, useNetworkStats } from '@/hooks';
 
 const DOCS_URL = 'https://docs.xandeum.network';
 
+// Custom hover dropdown component
+function HoverDropdown({
+    label,
+    items,
+    isActive
+}: {
+    label: string;
+    items: typeof GUIDE_NAVIGATION[0]['items'];
+    isActive: boolean;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const pathname = usePathname();
+
+    const checkActive = (id: string) => {
+        return pathname === `/guide/${id}` || (pathname === '/guide' && id === 'introduction');
+    };
+
+    return (
+        <div
+            className="relative"
+            onMouseEnter={() => setIsOpen(true)}
+            onMouseLeave={() => setIsOpen(false)}
+        >
+            <button
+                className={cn(
+                    "flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                    isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+            >
+                {label}
+                <ChevronDown className={cn(
+                    "h-3 w-3 transition-transform",
+                    isOpen && "rotate-180"
+                )} />
+            </button>
+
+            {isOpen && (
+                <div className="absolute top-full left-0 pt-1 z-50">
+                    <div className="bg-popover border rounded-lg shadow-lg p-1 min-w-[220px]">
+                        {items.map((item) => {
+                            const Icon = item.icon;
+                            const active = checkActive(item.id);
+                            return (
+                                <Link
+                                    key={item.id}
+                                    href={`/guide/${item.id}`}
+                                    className={cn(
+                                        "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors",
+                                        active
+                                            ? "bg-primary/10 text-primary"
+                                            : "hover:bg-muted"
+                                    )}
+                                >
+                                    <Icon className="h-4 w-4 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-sm">{item.title}</div>
+                                        <div className="text-[10px] text-muted-foreground truncate">{item.description}</div>
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function GuideLayout({ children }: { children: React.ReactNode }) {
     const { nodes } = useNodes();
     const { issueCount } = useNetworkStats(nodes);
-    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const pathname = usePathname();
 
-    // Helper to check if a link is active
     const isActive = (id: string) => {
         return pathname === `/guide/${id}` || (pathname === '/guide' && id === 'introduction');
     };
+
+    const currentSection = GUIDE_NAVIGATION.flatMap(g => g.items).find(item => isActive(item.id));
 
     return (
         <div className="min-h-screen flex flex-col">
             <Header issueCount={issueCount} />
 
-            <div className="flex-1 flex overflow-hidden">
-                {/* Mobile Sidebar Toggle */}
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="fixed bottom-4 left-4 z-50 lg:hidden shadow-lg"
-                    onClick={() => setSidebarOpen(!sidebarOpen)}
-                >
-                    {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-                </Button>
+            <div className="flex-1 flex flex-col">
+                {/* Guide Header with Horizontal Navigation - SOLID BACKGROUND */}
+                <div className="border-b bg-background sticky top-14 z-30">
+                    <div className="max-w-6xl mx-auto px-4">
+                        {/* Desktop Navigation */}
+                        <div className="hidden md:flex items-center gap-1 py-2">
+                            <Link href="/guide" className="flex items-center gap-2 mr-4 pr-4 border-r border-border">
+                                <BookOpen className="h-4 w-4 text-primary" />
+                                <span className="font-semibold text-sm">Guide</span>
+                            </Link>
 
-                {/* Sidebar */}
-                <aside className={cn(
-                    "fixed inset-y-0 left-0 z-40 w-72 bg-background border-r transform transition-transform duration-200 lg:relative lg:translate-x-0 pt-16 lg:pt-0 flex flex-col",
-                    sidebarOpen ? "translate-x-0" : "-translate-x-full"
-                )}>
-                    <div className="px-6 py-6 border-b">
-                        <div className="flex items-center gap-2 mb-2">
-                            <BookOpen className="h-5 w-5 text-primary" />
-                            <span className="font-bold text-lg">Documentation</span>
+                            {GUIDE_NAVIGATION.map((group) => (
+                                <HoverDropdown
+                                    key={group.title}
+                                    label={group.title}
+                                    items={group.items}
+                                    isActive={group.items.some(item => isActive(item.id))}
+                                />
+                            ))}
+
+                            <div className="ml-auto">
+                                <Link
+                                    href={DOCS_URL}
+                                    target="_blank"
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                    Official Docs
+                                    <ExternalLink className="h-3 w-3" />
+                                </Link>
+                            </div>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                            Everything you need to know
-                        </p>
+
+                        {/* Mobile Navigation */}
+                        <div className="flex md:hidden items-center justify-between py-2">
+                            <Link href="/guide" className="flex items-center gap-2">
+                                <BookOpen className="h-4 w-4 text-primary" />
+                                <span className="font-semibold text-sm">Guide</span>
+                                {currentSection && (
+                                    <>
+                                        <span className="text-muted-foreground">/</span>
+                                        <span className="text-sm text-muted-foreground truncate max-w-[150px]">{currentSection.title}</span>
+                                    </>
+                                )}
+                            </Link>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            >
+                                {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                            </Button>
+                        </div>
                     </div>
 
-                    <ScrollArea className="flex-1 py-6">
-                        <nav className="space-y-6 px-4">
-                            {GUIDE_NAVIGATION.map((group) => (
-                                <div key={group.title}>
-                                    <h4 className="px-2 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        {group.title}
-                                    </h4>
-                                    <ul className="space-y-1">
-                                        {group.items.map((item) => {
-                                            const Icon = item.icon;
-                                            const active = isActive(item.id);
-                                            return (
-                                                <li key={item.id}>
-                                                    <Link
-                                                        href={`/guide/${item.id}`}
-                                                        onClick={() => setSidebarOpen(false)}
-                                                        className={cn(
-                                                            "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
-                                                            active
-                                                                ? "bg-primary text-primary-foreground"
-                                                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                                        )}
-                                                    >
-                                                        <Icon className="h-4 w-4" />
-                                                        {item.title}
-                                                    </Link>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
+                    {/* Mobile Menu Dropdown */}
+                    {mobileMenuOpen && (
+                        <div className="md:hidden border-t bg-background">
+                            <ScrollArea className="max-h-[60vh]">
+                                <div className="p-4 space-y-4">
+                                    {GUIDE_NAVIGATION.map((group) => (
+                                        <div key={group.title}>
+                                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                                                {group.title}
+                                            </h4>
+                                            <div className="grid gap-1">
+                                                {group.items.map((item) => {
+                                                    const Icon = item.icon;
+                                                    const active = isActive(item.id);
+                                                    return (
+                                                        <Link
+                                                            key={item.id}
+                                                            href={`/guide/${item.id}`}
+                                                            onClick={() => setMobileMenuOpen(false)}
+                                                            className={cn(
+                                                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
+                                                                active
+                                                                    ? "bg-primary text-primary-foreground"
+                                                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                            )}
+                                                        >
+                                                            <Icon className="h-4 w-4" />
+                                                            {item.title}
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    <div className="pt-4 border-t">
+                                        <Link
+                                            href={DOCS_URL}
+                                            target="_blank"
+                                            className="flex items-center gap-2 text-sm text-primary hover:underline"
+                                        >
+                                            Official Xandeum Docs
+                                            <ExternalLink className="h-3 w-3" />
+                                        </Link>
+                                    </div>
                                 </div>
-                            ))}
-                        </nav>
-
-                        <div className="px-6 mt-8 pb-6">
-                            <Card className="bg-primary/5 border-primary/20">
-                                <CardContent className="p-4">
-                                    <p className="text-xs text-muted-foreground mb-2">
-                                        Need more details?
-                                    </p>
-                                    <Link
-                                        href={DOCS_URL}
-                                        target="_blank"
-                                        className="text-sm font-medium text-primary hover:underline flex items-center gap-1"
-                                    >
-                                        Official Xandeum Docs
-                                        <ExternalLink className="h-3 w-3" />
-                                    </Link>
-                                </CardContent>
-                            </Card>
+                            </ScrollArea>
                         </div>
-                    </ScrollArea>
-                </aside>
+                    )}
+                </div>
 
-                {/* Overlay for mobile */}
-                {sidebarOpen && (
-                    <div
-                        className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-                        onClick={() => setSidebarOpen(false)}
-                    />
-                )}
-
-                {/* Main Content Area */}
-                <main className="flex-1 overflow-y-auto bg-muted/5">
+                {/* Main Content */}
+                <main className="flex-1 bg-muted/5">
                     <div className="max-w-4xl mx-auto px-6 py-8 min-h-full flex flex-col">
                         {children}
                         <div className="mt-auto pt-12">

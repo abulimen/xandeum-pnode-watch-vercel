@@ -26,41 +26,64 @@ npm run dev
 ```
 
 ## Environment Configuration
-
+ 
 Create `.env.local` with:
-
+ 
 ```env
+# Required: Core Infrastructure
+BASE_URL=https://analytics.xandeum.network
+NEXT_PUBLIC_BASE_URL=https://analytics.xandeum.network
+
 # Required: Seed node IPs (comma-separated)
 NEXT_PUBLIC_PNODE_SEED_IPS=173.212.203.145,65.109.29.154,95.216.148.118
 
-# Optional: Default RPC port
-NEXT_PUBLIC_PNODE_RPC_PORT=6000
+# Required: Supabase credentials
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_ANON_KEY=your-anon-key
 
-# Optional: RPC endpoint path
+# Required: AI & Analytics
+GEMINI_API_KEY=your-gemini-key
+LONGCAT_API_KEY=your-longcat-key
+JUPITER_API_KEY=your-jupiter-key
+
+# Optional: RPC Configuration
+NEXT_PUBLIC_PNODE_RPC_PORT=6000
 NEXT_PUBLIC_PNODE_RPC_ENDPOINT=/rpc
 
-# Required for alerts: Brevo (Sendinblue) API
-BREVO_API_KEY=your-brevo-api-key
+# Optional: Notifications (Brevo)
+BREVO_API_KEY=your-brevo-key
 ALERT_FROM_EMAIL=alerts@yourdomain.com
 ALERT_FROM_NAME="pNode Watch"
 
-# Required for push notifications: VAPID keys
+# Optional: Push Notifications (VAPID)
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=your-public-key
 VAPID_PRIVATE_KEY=your-private-key
 VAPID_SUBJECT=mailto:your@email.com
 
-# Required for email links
-NEXT_PUBLIC_BASE_URL=https://your-domain.com
+# Optional: Bots
+TELEGRAM_BOT_TOKEN=your-telegram-token
+DISCORD_BOT_TOKEN=your-discord-token
+DISCORD_APP_ID=your-app-id
+DISCORD_PUBLIC_KEY=your-public-key
+
+# Optional: Security
+CRON_SECRET=your-random-secret-key
 ```
-
+ 
+### Supabase Setup
+1. Create a new Supabase project.
+2. Run the migration scripts in `scripts/*.sql` in the SQL Editor.
+3. Get your `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (Settings > API).
+ 
 ### Generating VAPID Keys
-
+ 
 ```bash
 npx web-push generate-vapid-keys
 ```
-
+ 
 ## Project Structure
-
+ 
 ```
 xandeum-analytics/
 ├── app/                      # Next.js App Router
@@ -94,10 +117,11 @@ xandeum-analytics/
 │   └── ui/                   # shadcn/ui components
 ├── hooks/                    # Custom React hooks
 ├── lib/
-│   ├── db/                   # SQLite database
-│   │   └── queries.ts        # Database operations
+│   ├── db/                   # Supabase client & schemas
+│   │   └── index.ts          # DB connection
 │   ├── services/             # Business logic
 │   └── utils.ts              # Utility functions
+├── scripts/                  # SQL Migrations
 ├── types/                    # TypeScript definitions
 │   ├── pnode.ts              # Core PNode types
 │   ├── issues.ts             # Issue/alert types

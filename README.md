@@ -98,32 +98,40 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | Maps | react-simple-maps |
 | State | TanStack Query (React Query) |
 | HTTP | Axios, Fetch API |
-| Database | SQLite (better-sqlite3) |
+| Database | Supabase (PostgreSQL) |
 | Email | Brevo (Sendinblue) API |
 | Push | Web Push (VAPID) |
 | Token Data | Jupiter API |
-| AI | LongCat AI (OpenAI-compatible) |
+| AI | Gemini / LongCat AI |
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEXT_PUBLIC_PNODE_SEED_IPS` | Yes | Comma-separated seed node IPs |
-| `NEXT_PUBLIC_PNODE_RPC_PORT` | No | Default: `6000` |
-| `BASE_URL` | Yes | Production base URL (e.g., `xandeum-pnode-watch.vercel.app`) |
-| `NEXT_PUBLIC_BASE_URL` | No | Base URL for client-side (with https://) |
-| `BREVO_API_KEY` | No | For email alerts |
-| `VAPID_PUBLIC_KEY` | No | For push notifications |
-| `VAPID_PRIVATE_KEY` | No | For push notifications |
-| `CRON_SECRET` | No | Secret key for cron API authorization |
-| `GEMINI_API_KEY` | Yes | For AI Copilot |
-| `GEMINI_MODEL` | No | Default: gemini-2.0-flash |
-| `LONGCAT_API_KEY` | Yes | For Network Summary |
-| `LONGCAT_API_URL` | No | LongCat API Endpoint |
-| `TELEGRAM_BOT_TOKEN` | No | For Telegram Bot |
-| `DISCORD_BOT_TOKEN` | No | For Discord Bot |
-| `DISCORD_APP_ID` | No | For Discord Bot |
-| `DISCORD_PUBLIC_KEY` | No | For Discord Bot |
+| `NEXT_PUBLIC_PNODE_SEED_IPS` | Yes | Comma-separated list of pNode seed IPs (e.g. `1.2.3.4,5.6.7.8`) |
+| `SUPABASE_URL` | Yes | Your Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase Service Role Key (Server-side admin) |
+| `SUPABASE_ANON_KEY` | Yes | Supabase Anon Key (Client-side) |
+| `BASE_URL` | Yes | Base URL of the app (e.g. `analytics.xandeum.network`) |
+| `NEXT_PUBLIC_BASE_URL` | Yes | Public base URL (Client-side) |
+| `GEMINI_API_KEY` | Yes | Google Gemini API Key for Copilot & Analysis |
+| `LONGCAT_API_KEY` | Yes | LongCat API Key for Network Summaries |
+| `JUPITER_API_KEY` | Yes | Jupiter API Key for XAND Price Data |
+| `NEXT_PUBLIC_PNODE_RPC_PORT` | No | pNode RPC Port (Default: `6000`) |
+| `NEXT_PUBLIC_PNODE_RPC_ENDPOINT` | No | pNode RPC Endpoint (Default: `/rpc`) |
+| `CRON_SECRET` | No | Secret key to protect cron API endpoints |
+| `BREVO_API_KEY` | No | Brevo (Sendinblue) API Key for Email Alerts |
+| `ALERT_FROM_EMAIL` | No | Sender email for alerts |
+| `ALERT_FROM_NAME` | No | Sender name for alerts |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | No | VAPID Public Key for Push Notifications |
+| `VAPID_PRIVATE_KEY` | No | VAPID Private Key for Push Notifications |
+| `VAPID_SUBJECT` | No | VAPID Subject (mailto link) |
+| `TELEGRAM_BOT_TOKEN` | No | Telegram Bot Token |
+| `DISCORD_APP_ID` | No | Discord Application ID |
+| `DISCORD_PUBLIC_KEY` | No | Discord Public Key |
+| `DISCORD_BOT_TOKEN` | No | Discord Bot Token |
+| `GEMINI_MODEL` | No | Default: `gemini-2.0-flash` |
+| `LONGCAT_API_URL` | No | Default: `https://api.longcat.chat/...` |
 
 ## Project Structure
 
@@ -146,7 +154,7 @@ xandeum-analytics/
 │   └── ui/                 # shadcn/ui components
 ├── hooks/                  # Custom React hooks
 ├── lib/
-│   ├── db/                 # SQLite database layer
+│   ├── db/                 # Supabase database layer
 │   └── services/           # Business logic services
 ├── types/                  # TypeScript definitions
 └── docs/                   # Documentation

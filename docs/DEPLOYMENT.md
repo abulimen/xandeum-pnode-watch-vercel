@@ -42,13 +42,28 @@ Vercel provides the simplest deployment for Next.js applications.
    ```
    NEXT_PUBLIC_PNODE_SEED_IPS=173.212.203.145,65.109.29.154,95.216.148.118
    NEXT_PUBLIC_PNODE_RPC_PORT=6000
+   BASE_URL=https://your-domain.vercel.app
+   NEXT_PUBLIC_BASE_URL=https://your-domain.vercel.app
+   
+   # Supabase (Required)
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=your-service-key
+   SUPABASE_ANON_KEY=your-anon-key
+
+   # AI & Analytics (Required)
+   GEMINI_API_KEY=your-gemini-key
+   LONGCAT_API_KEY=your-longcat-key
+   JUPITER_API_KEY=your-jupiter-key
+   
+   # Optional Features
    BREVO_API_KEY=your-brevo-api-key
    ALERT_FROM_EMAIL=alerts@yourdomain.com
-   ALERT_FROM_NAME=pNode Watch
+   ALERT_FROM_NAME="pNode Watch"
    NEXT_PUBLIC_VAPID_PUBLIC_KEY=your-public-key
    VAPID_PRIVATE_KEY=your-private-key
    VAPID_SUBJECT=mailto:your@email.com
-   NEXT_PUBLIC_BASE_URL=https://your-domain.vercel.app
+   TELEGRAM_BOT_TOKEN=your-token
+   DISCORD_BOT_TOKEN=your-token
    ```
 
 4. **Deploy**
@@ -60,7 +75,7 @@ Vercel provides the simplest deployment for Next.js applications.
 1. Go to Settings → Domains
 2. Add your domain
 3. Configure DNS as instructed
-4. Update `NEXT_PUBLIC_BASE_URL` accordingly
+4. Update `BASE_URL` accordingly
 
 ### Automatic Deployments
 
@@ -81,7 +96,7 @@ FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat python3 make g++
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -139,15 +154,20 @@ services:
     ports:
       - "3000:3000"
     environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - LONGCAT_API_KEY=${LONGCAT_API_KEY}
+      - JUPITER_API_KEY=${JUPITER_API_KEY}
       - BREVO_API_KEY=${BREVO_API_KEY}
       - ALERT_FROM_EMAIL=${ALERT_FROM_EMAIL}
       - ALERT_FROM_NAME=${ALERT_FROM_NAME}
       - NEXT_PUBLIC_VAPID_PUBLIC_KEY=${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
       - VAPID_SUBJECT=${VAPID_SUBJECT}
-      - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL}
-    volumes:
-      - ./data:/app/data  # For SQLite database persistence
+      - BASE_URL=${BASE_URL}
+      - NEXT_PUBLIC_BASE_URL=${BASE_URL}
     restart: unless-stopped
 ```
 
@@ -315,17 +335,17 @@ pm2 restart xandeum-analytics
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `NEXT_PUBLIC_PNODE_SEED_IPS` | Yes | Seed node IPs | `173.212.203.145,65.109.29.154` |
-| `NEXT_PUBLIC_PNODE_RPC_PORT` | No | Default RPC port | `6000` |
-| `NEXT_PUBLIC_PNODE_RPC_ENDPOINT` | No | RPC path | `/rpc` |
-| `NEXT_PUBLIC_USE_MOCK_DATA` | No | Enable mock data | `false` |
-| `BREVO_API_KEY` | For alerts | Brevo API key | `xkeysib-xxx` |
-| `ALERT_FROM_EMAIL` | For alerts | Sender email | `alerts@domain.com` |
-| `ALERT_FROM_NAME` | For alerts | Sender name | `pNode Watch` |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | For push | VAPID public key | `BNxGj...` |
-| `VAPID_PRIVATE_KEY` | For push | VAPID private key | `xxx` |
-| `VAPID_SUBJECT` | For push | Contact email | `mailto:you@email.com` |
-| `NEXT_PUBLIC_BASE_URL` | For emails | Production URL | `https://analytics.xandeum.network` |
+| `NEXT_PUBLIC_PNODE_SEED_IPS` | Yes | Seed node IPs | `1.2.3.4,5.6.7.8` |
+| `SUPABASE_URL` | Yes | Supabase Project URL | `https://x.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase Service Role Key | `ey...` |
+| `GEMINI_API_KEY` | Yes | AI Copilot Key | `AI...` |
+| `LONGCAT_API_KEY` | Yes | Network Summary AI Key | `LC...` |
+| `JUPITER_API_KEY` | Yes | Token Price API | `...` |
+| `BASE_URL` | Yes | Production URL | `https://analytics...` |
+| `BREVO_API_KEY` | No | Email Alerts | `xkeysib...` |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | No | Push Notifications | `BH...` |
+| `TELEGRAM_BOT_TOKEN` | No | Telegram Bot | `123:ABC...` |
+| `DISCORD_BOT_TOKEN` | No | Discord Bot | `MT...` |
 
 ---
 
@@ -388,10 +408,11 @@ The app uses TanStack Query with 30-second stale time. For higher traffic:
 
 ### Database
 
-SQLite is used for alert subscriptions. For high volume:
+Supabase (PostgreSQL) is used for all data storage.
 
-1. Consider PostgreSQL migration
-2. Add connection pooling
+1. Enable Row Level Security (RLS)
+2. Use connection pooling (Supabase Transaction Mode)
+3. Monitor database size and index usage
 
 ---
 
@@ -406,12 +427,7 @@ npm ci
 npm run build
 ```
 
-### better-sqlite3 Issues
 
-```bash
-# Rebuild native modules
-npm rebuild better-sqlite3
-```
 
 ### Memory Issues
 

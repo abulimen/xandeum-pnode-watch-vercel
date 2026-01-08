@@ -1,6 +1,6 @@
 'use client';
 
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,8 +8,20 @@ import { FLATTENED_SECTIONS, getNextSection, getPrevSection } from '../guide-dat
 import { GuideComponents } from '../content-components';
 import { use } from 'react';
 
+// Legacy URL redirects
+const REDIRECTS: Record<string, string> = {
+    'node-explorer': 'dashboard',
+    'staking-calculator': 'roi-calculator',
+};
+
 export default function GuideSectionPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
+
+    // Handle legacy URL redirects
+    if (REDIRECTS[slug]) {
+        redirect(`/guide/${REDIRECTS[slug]}`);
+    }
+
     const section = FLATTENED_SECTIONS.find((s) => s.id === slug);
 
     if (!section) {
