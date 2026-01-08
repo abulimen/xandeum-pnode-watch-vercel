@@ -1,6 +1,6 @@
 /**
  * useNodeFilters Hook - Search and filter functionality for pNodes
- * Supports: search, status, region, country, city, favorites, and public/private filtering
+ * Supports: search, status, region, country, city, favorites, version, and public/private filtering
  */
 
 'use client';
@@ -11,7 +11,6 @@ import { StatusFilter } from '@/types/filters';
 import { useFavorites } from './useFavorites';
 
 export type AccessFilter = 'all' | 'public' | 'private';
-export type VersionTypeFilter = 'all' | 'mainnet' | 'trynet' | 'devnet' | 'hide-experimental';
 
 interface UseNodeFiltersResult {
     filteredNodes: PNode[];
@@ -25,8 +24,8 @@ interface UseNodeFiltersResult {
     setCountryFilter: (country: string) => void;
     cityFilter: string;
     setCityFilter: (city: string) => void;
-    versionTypeFilter: VersionTypeFilter;
-    setVersionTypeFilter: (filter: VersionTypeFilter) => void;
+    versionFilter: string;
+    setVersionFilter: (filter: string) => void;
     accessFilter: AccessFilter;
     setAccessFilter: (access: AccessFilter) => void;
     favoritesOnly: boolean;
@@ -38,6 +37,7 @@ interface UseNodeFiltersResult {
     availableRegions: string[];
     availableCountries: string[];
     availableCities: string[];
+    availableVersions: string[];
 }
 
 export function useNodeFilters(nodes: PNode[]): UseNodeFiltersResult {
@@ -46,7 +46,7 @@ export function useNodeFilters(nodes: PNode[]): UseNodeFiltersResult {
     const [regionFilter, setRegionFilter] = useState<string[]>([]);
     const [countryFilter, setCountryFilter] = useState<string>('all');
     const [cityFilter, setCityFilter] = useState<string>('all');
-    const [versionTypeFilter, setVersionTypeFilter] = useState<VersionTypeFilter>('all');
+    const [versionFilter, setVersionFilter] = useState<string>('all');
     const [accessFilter, setAccessFilter] = useState<AccessFilter>('all');
     const [favoritesOnly, setFavoritesOnly] = useState(false);
 
@@ -91,6 +91,17 @@ export function useNodeFilters(nodes: PNode[]): UseNodeFiltersResult {
         });
         return Array.from(cities).sort();
     }, [nodes, countryFilter]);
+
+    // Get available versions from node data
+    const availableVersions = useMemo(() => {
+        const versions = new Set<string>();
+        nodes.forEach(node => {
+            if (node.version) {
+                versions.add(node.version);
+            }
+        });
+        return Array.from(versions).sort();
+    }, [nodes]);
 
     // Apply all filters
     const filteredNodes = useMemo(() => {
@@ -146,15 +157,9 @@ export function useNodeFilters(nodes: PNode[]): UseNodeFiltersResult {
                 }
             }
 
-            // Version type filter (trynet/devnet/mainnet)
-            if (versionTypeFilter !== 'all') {
-                const nodeVersionType = node.versionType || 'unknown';
-                if (versionTypeFilter === 'hide-experimental') {
-                    // Hide trynet and devnet nodes
-                    if (nodeVersionType === 'trynet' || nodeVersionType === 'devnet') {
-                        return false;
-                    }
-                } else if (nodeVersionType !== versionTypeFilter) {
+            // Version filter (exact match)
+            if (versionFilter !== 'all') {
+                if (!node.version || node.version !== versionFilter) {
                     return false;
                 }
             }
@@ -172,7 +177,7 @@ export function useNodeFilters(nodes: PNode[]): UseNodeFiltersResult {
 
             return true;
         });
-    }, [nodes, searchQuery, statusFilter, regionFilter, countryFilter, cityFilter, versionTypeFilter, accessFilter, favoritesOnly, favorites]);
+    }, [nodes, searchQuery, statusFilter, regionFilter, countryFilter, cityFilter, versionFilter, accessFilter, favoritesOnly, favorites]);
 
     const clearFilters = useCallback(() => {
         setSearchQuery('');
@@ -180,7 +185,7 @@ export function useNodeFilters(nodes: PNode[]): UseNodeFiltersResult {
         setRegionFilter([]);
         setCountryFilter('all');
         setCityFilter('all');
-        setVersionTypeFilter('all');
+        setVersionFilter('all');
         setAccessFilter('all');
         setFavoritesOnly(false);
     }, []);
@@ -191,7 +196,7 @@ export function useNodeFilters(nodes: PNode[]): UseNodeFiltersResult {
         regionFilter.length > 0 ||
         countryFilter !== 'all' ||
         cityFilter !== 'all' ||
-        versionTypeFilter !== 'all' ||
+        versionFilter !== 'all' ||
         accessFilter !== 'all' ||
         favoritesOnly;
 
@@ -207,8 +212,8 @@ export function useNodeFilters(nodes: PNode[]): UseNodeFiltersResult {
         setCountryFilter,
         cityFilter,
         setCityFilter,
-        versionTypeFilter,
-        setVersionTypeFilter,
+        versionFilter,
+        setVersionFilter,
         accessFilter,
         setAccessFilter,
         favoritesOnly,
@@ -220,5 +225,6 @@ export function useNodeFilters(nodes: PNode[]): UseNodeFiltersResult {
         availableRegions,
         availableCountries,
         availableCities,
+        availableVersions,
     };
 }

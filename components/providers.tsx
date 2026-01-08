@@ -9,7 +9,7 @@ import { ReactNode, useState } from 'react';
 import { ThemeProvider } from 'next-themes';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
 import { AppLoadingProvider } from '@/contexts/AppLoadingContext';
-import { NetworkProvider } from '@/contexts/NetworkContext';
+import { NetworkDataProvider } from '@/contexts/NetworkDataContext';
 
 interface ProvidersProps {
     children: ReactNode;
@@ -34,16 +34,17 @@ export function Providers({ children }: ProvidersProps) {
         <QueryClientProvider client={queryClient}>
             <ThemeProvider
                 attribute="class"
-                defaultTheme="dark"
+                defaultTheme="system"
                 enableSystem
+                themes={['light', 'dark', 'dark-amoled', 'system']}
                 disableTransitionOnChange
             >
                 <AppLoadingProvider minLoadingTime={1800}>
-                    <NetworkProvider>
+                    <NetworkDataProvider>
                         <FavoritesProvider>
                             {children}
                         </FavoritesProvider>
-                    </NetworkProvider>
+                    </NetworkDataProvider>
                 </AppLoadingProvider>
             </ThemeProvider>
         </QueryClientProvider>

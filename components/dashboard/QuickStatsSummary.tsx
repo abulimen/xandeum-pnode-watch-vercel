@@ -12,9 +12,11 @@ import { cn } from '@/lib/utils';
 interface QuickStatsSummaryProps {
     nodes: PNode[];
     filteredCount: number;
+    startItem?: number;
+    endItem?: number;
 }
 
-export function QuickStatsSummary({ nodes, filteredCount }: QuickStatsSummaryProps) {
+export function QuickStatsSummary({ nodes, filteredCount, startItem, endItem }: QuickStatsSummaryProps) {
     const totalNodes = nodes.length;
     const onlineNodes = nodes.filter(n => n.status === 'online').length;
     const degradedNodes = nodes.filter(n => n.status === 'degraded').length;
@@ -24,6 +26,11 @@ export function QuickStatsSummary({ nodes, filteredCount }: QuickStatsSummaryPro
     const healthScore = totalNodes > 0
         ? ((onlineNodes + (degradedNodes * 0.5)) / totalNodes) * 100
         : 0;
+
+    // Display range if pagination info provided, otherwise just filtered count
+    const displayText = startItem !== undefined && endItem !== undefined
+        ? `Showing ${startItem}-${endItem} of ${filteredCount} nodes`
+        : `Showing ${filteredCount} of ${totalNodes} nodes`;
 
     return (
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-muted/30 p-4 rounded-lg border border-border/50">
@@ -65,7 +72,7 @@ export function QuickStatsSummary({ nodes, filteredCount }: QuickStatsSummaryPro
                 </div>
                 <div className="w-px h-4 bg-border mx-1" />
                 <span className="font-medium text-foreground">
-                    Showing {filteredCount} of {totalNodes} nodes
+                    {displayText}
                 </span>
             </div>
         </div>

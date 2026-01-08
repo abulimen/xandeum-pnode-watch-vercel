@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useNetwork, NetworkType } from '@/contexts/NetworkContext';
+import { useNetworkData, NetworkType } from '@/contexts/NetworkDataContext';
 import { cn } from '@/lib/utils';
 
 interface NetworkToggleProps {
@@ -10,7 +10,7 @@ interface NetworkToggleProps {
 }
 
 export function NetworkToggle({ className, compact = false }: NetworkToggleProps) {
-    const { network, setNetwork, networkStats, isLoading } = useNetwork();
+    const { network, setNetwork, networkStats, isLoading } = useNetworkData();
 
     const options: { value: NetworkType; label: string; shortLabel: string; color: string; bgColor: string; count: number }[] = [
         {
@@ -41,37 +41,44 @@ export function NetworkToggle({ className, compact = false }: NetworkToggleProps
 
     if (isLoading) {
         return (
-            <div className={cn("inline-flex items-center p-1 rounded-full bg-white/5 border border-white/10", className)}>
-                <div className="px-3 py-1.5 text-xs text-white/40 animate-pulse">Loading...</div>
+            <div className={cn("inline-flex items-center p-1 rounded-full bg-muted/50 border border-border", className)}>
+                <div className="px-3 py-1.5 text-xs text-muted-foreground animate-pulse">Loading...</div>
             </div>
         );
     }
 
     return (
-        <div className={cn("inline-flex items-center p-1 rounded-full bg-white/5 border border-white/10", className)}>
+        <div className={cn("inline-flex items-center p-0.5 sm:p-1 rounded-full bg-muted/50 border border-border", className)}>
             {options.map((option, index) => (
                 <React.Fragment key={option.value}>
                     <button
                         onClick={() => setNetwork(option.value)}
                         className={cn(
-                            "flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full transition-all duration-200",
+                            "flex items-center justify-center rounded-full transition-all duration-200",
+                            compact
+                                ? "w-6 h-6 p-0"
+                                : "gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5",
                             network === option.value
                                 ? `${option.bgColor} border`
-                                : "hover:bg-white/5"
+                                : "hover:bg-accent"
                         )}
+                        title={option.label}
                     >
+                        {!compact && (
+                            <span
+                                className={cn(
+                                    "w-1.5 h-1.5 rounded-full transition-all",
+                                    network === option.value
+                                        ? `${option.color.replace('text-', 'bg-')} shadow-[0_0_6px_currentColor]`
+                                        : "bg-muted-foreground/50"
+                                )}
+                            />
+                        )}
                         <span
                             className={cn(
-                                "w-1.5 h-1.5 rounded-full transition-all",
-                                network === option.value
-                                    ? `${option.color.replace('text-', 'bg-')} shadow-[0_0_6px_currentColor]`
-                                    : "bg-white/30"
-                            )}
-                        />
-                        <span
-                            className={cn(
-                                "text-xs sm:text-sm font-medium transition-colors",
-                                network === option.value ? option.color : "text-white/50"
+                                "font-medium transition-colors",
+                                compact ? "text-[10px]" : "text-xs sm:text-sm",
+                                network === option.value ? option.color : "text-muted-foreground"
                             )}
                         >
                             {compact ? option.shortLabel : option.label}
@@ -80,15 +87,15 @@ export function NetworkToggle({ className, compact = false }: NetworkToggleProps
                             <span
                                 className={cn(
                                     "text-[10px] sm:text-xs font-mono transition-colors",
-                                    network === option.value ? option.color : "text-white/30"
+                                    network === option.value ? option.color : "text-muted-foreground/70"
                                 )}
                             >
                                 ({option.count})
                             </span>
                         )}
                     </button>
-                    {index < options.length - 1 && (
-                        <div className="w-px h-4 bg-white/10 mx-0.5" />
+                    {index < options.length - 1 && !compact && (
+                        <div className="w-px h-4 bg-border mx-0.5" />
                     )}
                 </React.Fragment>
             ))}

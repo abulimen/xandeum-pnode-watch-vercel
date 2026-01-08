@@ -8,6 +8,7 @@ import { RefreshCw, Download, Share2, Sparkles, AlertCircle } from 'lucide-react
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
+import { useNetworkData } from '@/contexts/NetworkDataContext';
 
 interface NetworkSummaryData {
     generatedAt: string;
@@ -23,13 +24,21 @@ export function NetworkSummary() {
     const [displayedContent, setDisplayedContent] = useState('');
     const [isTyping, setIsTyping] = useState(false);
 
-    // Cache key
-    const CACHE_KEY = 'xandeum_network_summary_v2';
-    const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+    // Get current network from context
+    const { network } = useNetworkData();
 
+    // Cache key includes network
+    const CACHE_KEY = `xandeum_network_summary_v4_${network}`;
+    const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+    // Reload summary when network changes
     useEffect(() => {
+        // Clear existing summary so UI reflects new network immediately
+        setSummary(null);
+        setDisplayedContent('');
+        setIsTyping(false);
         loadSummary();
-    }, []);
+    }, [network]);
 
     // Typewriter effect
     useEffect(() => {
@@ -72,8 +81,12 @@ export function NetworkSummary() {
                 }
             }
 
-            // Fetch from API
-            const res = await fetch('/api/network-summary', {
+            // Fetch from API with network parameter
+            const url = network !== 'all'
+                ? `/api/network-summary?network=${network}`
+                : '/api/network-summary';
+
+            const res = await fetch(url, {
                 method: forceRefresh ? 'POST' : 'GET',
                 cache: 'no-store'
             });

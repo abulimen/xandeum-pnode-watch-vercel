@@ -1,89 +1,35 @@
 /**
- * WorldMap Component - Country-based node visualization
- * Shows node count per country, click to see nodes list
+ * WorldMap Component - Interactive map visualization using MapLibre GL
+ * Supports 3D Globe and 2D Mercator views with individual node markers
  */
 
 'use client';
 
-import { useState, useMemo, memo } from 'react';
-import {
-    ComposableMap,
-    Geographies,
-    Geography,
-    Marker,
-    ZoomableGroup,
-} from 'react-simple-maps';
+import { useMemo, memo, useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { PNode } from '@/types/pnode';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { X, ZoomIn, ZoomOut, Loader2, MapPin, Server, ChevronRight } from 'lucide-react';
+import { Map, MapControls, MapMarker, MarkerContent, MarkerPopup } from '@/components/ui/map';
+import { Server, Activity, Clock, Shield, ChevronRight, Globe, Map as MapIcon, Maximize } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { Map as MapLibreMap } from 'maplibre-gl';
 
-// World map TopoJSON URL
-const geoUrl = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+type Vector3 = [number, number, number];
 
-// Country centroids for label placement (approximate)
-const countryCentroids: Record<string, [number, number]> = {
-    'United States': [-98, 39],
-    'USA': [-98, 39],
-    'Canada': [-106, 56],
-    'Brazil': [-55, -10],
-    'Argentina': [-64, -34],
-    'United Kingdom': [-2, 54],
-    'UK': [-2, 54],
-    'Germany': [10, 51],
-    'France': [2, 46],
-    'Spain': [-4, 40],
-    'Italy': [12, 42],
-    'Netherlands': [5, 52],
-    'Poland': [19, 52],
-    'Russia': [100, 60],
-    'China': [105, 35],
-    'Japan': [138, 36],
-    'South Korea': [128, 36],
-    'India': [79, 22],
-    'Australia': [134, -25],
-    'South Africa': [25, -29],
-    'Nigeria': [8, 10],
-    'Egypt': [30, 27],
-    'Singapore': [104, 1],
-    'Indonesia': [118, -2],
-    'Thailand': [101, 15],
-    'Vietnam': [106, 16],
-    'Philippines': [122, 12],
-    'Malaysia': [102, 4],
-    'Turkey': [35, 39],
-    'Ukraine': [32, 49],
-    'Sweden': [18, 62],
-    'Norway': [10, 62],
-    'Finland': [26, 64],
-    'Denmark': [10, 56],
-    'Switzerland': [8, 47],
-    'Austria': [14, 47],
-    'Belgium': [4, 51],
-    'Portugal': [-8, 39],
-    'Ireland': [-8, 53],
-    'Greece': [22, 39],
-    'Czech Republic': [15, 50],
-    'Romania': [25, 46],
-    'Hungary': [20, 47],
-    'Mexico': [-102, 23],
-    'Colombia': [-74, 4],
-    'Chile': [-71, -33],
-    'Peru': [-76, -10],
-    'Venezuela': [-66, 8],
-    'New Zealand': [172, -41],
-    'Taiwan': [121, 24],
-    'Hong Kong': [114, 22],
-    'UAE': [54, 24],
-    'Saudi Arabia': [45, 24],
-    'Israel': [35, 31],
-    'Kenya': [38, 1],
-    'Morocco': [-6, 32],
-    'Pakistan': [69, 30],
-    'Bangladesh': [90, 24],
-};
+const DEG2RAD = Math.PI / 180;
+
+function lngLatToVector(lng: number, lat: number): Vector3 {
+    const radLng = lng * DEG2RAD;
+    const radLat = lat * DEG2RAD;
+    const x = Math.cos(radLat) * Math.cos(radLng);
+    const y = Math.sin(radLat);
+    const z = Math.cos(radLat) * Math.sin(radLng);
+    return [x, y, z];
+}
+
+function dot(a: Vector3, b: Vector3) {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
 
 interface WorldMapProps {
     nodes: PNode[];
@@ -91,376 +37,277 @@ interface WorldMapProps {
     isLoadingLocations?: boolean;
 }
 
-interface CountryGroup {
-    country: string;
-    nodes: PNode[];
-    coordinates: [number, number];
-}
+function WorldMapComponent({ nodes, isLoadingLocations }: WorldMapProps) {
+    const router = useRouter();
+    const mapRef = useRef<MapLibreMap>(null);
+    const [is3D, setIs3D] = useState(false);
+    const [mapReady, setMapReady] = useState(false);
+    const [viewVector, setViewVector] = useState<Vector3 | null>(null);
 
-function WorldMapComponent({ nodes, totalNodes, isLoadingLocations }: WorldMapProps) {
-    const [selectedCountry, setSelectedCountry] = useState<CountryGroup | null>(null);
-    const [position, setPosition] = useState({ coordinates: [0, 20] as [number, number], zoom: 1 });
-    const [tooltip, setTooltip] = useState<{ name: string; nodeCount?: number } | null>(null);
-    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
-    // Track mouse position on the container
-    const handleMouseMove = (e: React.MouseEvent) => {
-        setMousePos({ x: e.clientX, y: e.clientY });
-    };
-
-    // Group nodes by country
-    const countryGroups = useMemo(() => {
-        const groups: Record<string, CountryGroup> = {};
-
-        nodes.forEach(node => {
-            const country = node.location?.country;
-            if (!country) return;
-
-            if (!groups[country]) {
-                // Try to get centroid, fallback to first node's coordinates
-                const centroid = countryCentroids[country];
-                const coords: [number, number] = centroid ||
-                    (node.location?.coordinates ? [node.location.coordinates.lng, node.location.coordinates.lat] : [0, 0]);
-
-                groups[country] = {
-                    country,
-                    nodes: [],
-                    coordinates: coords,
-                };
+    // Wait for map instance to become available
+    useEffect(() => {
+        if (mapReady) return;
+        let rafId: number;
+        const checkMap = () => {
+            if (mapRef.current) {
+                setMapReady(true);
+                return;
             }
-            groups[country].nodes.push(node);
-        });
+            rafId = requestAnimationFrame(checkMap);
+        };
+        checkMap();
+        return () => cancelAnimationFrame(rafId);
+    }, [mapReady]);
 
-        return Object.values(groups).sort((a, b) => b.nodes.length - a.nodes.length);
+    // Toggle between Globe (3D) and Mercator (2D) projections
+    useEffect(() => {
+        const map = mapRef.current as any; // Cast to any to access newer MapLibre features if types are outdated
+        if (!map) return;
+
+        if (is3D) {
+            if (map.setProjection) {
+                map.setProjection({ type: 'globe' });
+            }
+            // Add atmosphere/fog for realistic 3D effect
+            if (map.setFog) {
+                try {
+                    map.setFog({
+                        range: [1.5, 8],
+                        color: '#242b4b',
+                        'horizon-blend': 0.1,
+                        'high-color': '#161b33', // Slightly lighter than space-color
+                        'space-color': '#020617', // Match the card background
+                        'star-intensity': 0.4
+                    });
+                } catch (e) {
+                    console.error("Error setting fog:", e);
+                }
+            }
+            // Zoom out slightly to see the curve if zoomed in common levels
+            if (map.getZoom() < 2.5) map.zoomTo(2.5, { duration: 1500 });
+        } else {
+            if (map.setProjection) {
+                map.setProjection({ type: 'mercator' });
+            }
+            // Reset/remove fog
+            if (map.setFog) {
+                try {
+                    map.setFog({});
+                } catch (e) {
+                    console.error("Error clearing fog:", e);
+                }
+            }
+            // Reset rotation/pitch for 2D view
+            map.easeTo({ pitch: 0, bearing: 0, duration: 1500 });
+        }
+    }, [is3D]);
+
+    // Track camera orientation to hide back-facing markers in 3D mode
+    useEffect(() => {
+        if (!mapReady || !mapRef.current) {
+            setViewVector(null);
+            return;
+        }
+
+        const map = mapRef.current;
+
+        if (!is3D) {
+            setViewVector(null);
+            return;
+        }
+
+        const updateVector = () => {
+            const center = map.getCenter();
+            setViewVector(lngLatToVector(center.lng, center.lat));
+        };
+
+        updateVector();
+        map.on('move', updateVector);
+
+        return () => {
+            map.off('move', updateVector);
+        };
+    }, [is3D, mapReady]);
+
+    // Filter nodes with valid coordinates
+    const validNodes = useMemo(() => {
+        return nodes.filter(n => n.location?.coordinates && n.location.coordinates.lng && n.location.coordinates.lat);
     }, [nodes]);
 
-    const handleZoomIn = () => {
-        if (position.zoom >= 4) return;
-        setPosition(pos => ({ ...pos, zoom: pos.zoom * 1.5 }));
-    };
+    const nodesToRender = useMemo(() => {
+        if (!is3D || !viewVector) return validNodes;
 
-    const handleZoomOut = () => {
-        if (position.zoom <= 1) return;
-        setPosition(pos => ({ ...pos, zoom: pos.zoom / 1.5 }));
-    };
+        return validNodes.filter((node) => {
+            const coords = node.location!.coordinates!;
+            const nodeVector = lngLatToVector(coords.lng, coords.lat);
+            return dot(viewVector, nodeVector) >= 0;
+        });
+    }, [validNodes, viewVector, is3D]);
 
-    const handleMoveEnd = (position: { coordinates: [number, number]; zoom: number }) => {
-        setPosition(position);
-    };
-
-    // Get status summary for a country
-    const getStatusSummary = (countryNodes: PNode[]) => {
-        const online = countryNodes.filter(n => n.status === 'online').length;
-        const degraded = countryNodes.filter(n => n.status === 'degraded').length;
-        const offline = countryNodes.filter(n => n.status === 'offline').length;
-        return { online, degraded, offline };
-    };
-
-    // Get marker color based on node status proportions
-    const getMarkerColor = (countryNodes: PNode[]) => {
-        const total = countryNodes.length;
-        const online = countryNodes.filter(n => n.status === 'online').length;
-        const degraded = countryNodes.filter(n => n.status === 'degraded').length;
-        const offline = countryNodes.filter(n => n.status === 'offline').length;
-
-        // Calculate percentages
-        const onlinePct = online / total;
-        const offlinePct = offline / total;
-
-        // Mostly offline (>50%) = red
-        if (offlinePct > 0.5) return '#ef4444';
-        // Has significant offline (>20%) = orange-red
-        if (offlinePct > 0.2) return '#f97316';
-        // Has any offline or mostly degraded = amber
-        if (offline > 0 || degraded / total > 0.5) return '#f59e0b';
-        // Has some degraded = yellow-green
-        if (degraded > 0) return '#84cc16';
-        // All online = green
-        return '#10b981';
+    // Handle Reset View
+    const handleResetView = () => {
+        const map = mapRef.current;
+        if (map) {
+            map.flyTo({
+                center: [0, 20],
+                zoom: 1.5,
+                pitch: 0,
+                bearing: 0,
+                essential: true
+            });
+        }
     };
 
     return (
-        <div className="relative w-full h-full bg-slate-900 rounded-lg overflow-hidden" onMouseMove={handleMouseMove}>
-            <ComposableMap
-                projection="geoMercator"
-                projectionConfig={{
-                    scale: 120,
-                    center: [0, 30],
-                }}
-                style={{ width: '100%', height: '100%' }}
+        <div className="w-full h-full min-h-[500px] relative bg-background overflow-hidden">
+            <Map
+                ref={mapRef}
+                center={[0, 20]}
+                zoom={1.5}
+                styles={{ dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json", light: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json" }}
+                attributionControl={false}
+                scrollZoom={false}
+                dragRotate={false}
+                touchPitch={false}
             >
-                <ZoomableGroup
-                    zoom={position.zoom}
-                    center={position.coordinates}
-                    onMoveEnd={handleMoveEnd}
-                >
-                    {/* World geography */}
-                    <Geographies geography={geoUrl}>
-                        {({ geographies }) =>
-                            geographies.map((geo) => (
-                                <Geography
-                                    key={geo.rsmKey}
-                                    geography={geo}
-                                    fill="#1e3a5f"
-                                    stroke="#2563eb"
-                                    strokeWidth={0.5}
-                                    onMouseEnter={() => {
-                                        const countryName = geo.properties?.name || 'Unknown';
-                                        setTooltip({ name: countryName });
-                                    }}
-                                    onMouseLeave={() => setTooltip(null)}
-                                    style={{
-                                        default: { outline: 'none', cursor: 'pointer' },
-                                        hover: { fill: '#2563eb', outline: 'none' },
-                                        pressed: { outline: 'none' },
-                                    }}
-                                />
-                            ))
-                        }
-                    </Geographies>
-
-                    {/* Country markers with node counts */}
-                    {countryGroups.map((group) => {
-                        const markerColor = getMarkerColor(group.nodes);
-                        const isLargeCluster = group.nodes.length >= 10;
-                        const baseSize = isLargeCluster ? 8 : 6;
-
-                        return (
-                            <Marker
-                                key={group.country}
-                                coordinates={group.coordinates}
-                                onClick={() => setSelectedCountry(group)}
-                            >
-                                {/* Pulse effect */}
-                                <circle
-                                    r={(baseSize + 6) / position.zoom}
-                                    fill={markerColor}
-                                    opacity={0.2}
-                                >
-                                    <animate
-                                        attributeName="r"
-                                        from={(baseSize + 6) / position.zoom}
-                                        to={(baseSize + 14) / position.zoom}
-                                        dur="2s"
-                                        repeatCount="indefinite"
-                                    />
-                                    <animate
-                                        attributeName="opacity"
-                                        from="0.2"
-                                        to="0"
-                                        dur="2s"
-                                        repeatCount="indefinite"
-                                    />
-                                </circle>
-                                {/* Main circle */}
-                                <circle
-                                    r={baseSize / position.zoom}
-                                    fill={markerColor}
-                                    stroke="#fff"
-                                    strokeWidth={2 / position.zoom}
-                                    className="cursor-pointer transition-all hover:opacity-80"
-                                    onMouseEnter={() => {
-                                        setTooltip({
-                                            name: group.country,
-                                            nodeCount: group.nodes.length
-                                        });
-                                    }}
-                                    onMouseLeave={() => setTooltip(null)}
-                                />
-                                {/* Count label */}
-                                <text
-                                    textAnchor="middle"
-                                    y={4 / position.zoom}
-                                    style={{
-                                        fontFamily: 'system-ui',
-                                        fill: '#fff',
-                                        fontSize: `${(isLargeCluster ? 9 : 7) / position.zoom}px`,
-                                        fontWeight: 'bold',
-                                        pointerEvents: 'none',
-                                    }}
-                                >
-                                    {group.nodes.length}
-                                </text>
-                            </Marker>
-                        );
-                    })}
-                </ZoomableGroup>
-            </ComposableMap>
-
-            {/* Zoom controls */}
-            <div className="absolute top-4 left-4 flex flex-col gap-2">
-                <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8 bg-slate-800/90 hover:bg-slate-700 text-white"
-                    onClick={handleZoomIn}
-                >
-                    <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8 bg-slate-800/90 hover:bg-slate-700 text-white"
-                    onClick={handleZoomOut}
-                >
-                    <ZoomOut className="h-4 w-4" />
-                </Button>
-            </div>
-
-            {/* Legend */}
-            <div className="absolute bottom-4 left-4 bg-slate-800/90 backdrop-blur rounded-lg p-3 flex gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500" />
-                    <span className="text-slate-300">All Online</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-amber-500" />
-                    <span className="text-slate-300">Some Degraded</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-red-500" />
-                    <span className="text-slate-300">Has Offline</span>
-                </div>
-            </div>
-
-            {/* Node count badge */}
-            <div className="absolute top-4 right-4 bg-slate-800/90 backdrop-blur rounded-lg px-3 py-2 text-sm text-slate-300 flex items-center gap-2">
-                {isLoadingLocations && <Loader2 className="h-3 w-3 animate-spin" />}
-                {countryGroups.reduce((sum, g) => sum + g.nodes.length, 0)}{totalNodes && totalNodes > countryGroups.reduce((sum, g) => sum + g.nodes.length, 0) ? ` of ${totalNodes}` : ''} nodes in {countryGroups.length} countries
-            </div>
-
-            {/* Tooltip */}
-            {tooltip && (
-                <div
-                    className="fixed z-50 pointer-events-none bg-slate-900 text-white px-3 py-2 rounded-lg shadow-xl border border-slate-700 text-sm"
-                    style={{
-                        left: mousePos.x + 12,
-                        top: mousePos.y - 12,
-                    }}
-                >
-                    <span className="font-medium">{tooltip.name}</span>
-                    {tooltip.nodeCount && (
-                        <span className="text-slate-400 ml-2">({tooltip.nodeCount} nodes)</span>
-                    )}
-                </div>
-            )}
-
-            {/* Selected Country Panel - Modal on mobile, side panel on desktop */}
-            {selectedCountry && (
-                <>
-                    {/* Backdrop for mobile */}
-                    <div
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-                        onClick={() => setSelectedCountry(null)}
-                    />
-                    <div
-                        className="fixed lg:absolute z-50 
-                            inset-4 lg:inset-auto lg:right-4 lg:top-16 lg:bottom-20 
-                            lg:w-80 max-h-[80vh] lg:max-h-none
-                            bg-slate-800/95 backdrop-blur-sm border border-slate-700 rounded-lg shadow-xl 
-                            flex flex-col overflow-hidden"
+                {/* Map Controls: 3D Toggle and Reset - Top Right */}
+                <div className="absolute top-4 right-4 z-10 flex text-left gap-2">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setIs3D(!is3D)}
+                        className="bg-slate-900/90 backdrop-blur text-slate-200 hover:bg-slate-800 border border-slate-700/50 shadow-lg h-9"
                     >
-                        {/* Header */}
-                        <div className="p-4 border-b border-slate-700 shrink-0">
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-white text-lg truncate">
-                                        {selectedCountry.country}
-                                    </h3>
-                                    <p className="text-sm text-slate-400 mt-0.5">
-                                        {selectedCountry.nodes.length} node{selectedCountry.nodes.length !== 1 ? 's' : ''}
-                                    </p>
+                        {is3D ? (
+                            <>
+                                <MapIcon className="w-4 h-4 mr-2" />
+                                2D
+                            </>
+                        ) : (
+                            <>
+                                <Globe className="w-4 h-4 mr-2" />
+                                3D
+                            </>
+                        )}
+                    </Button>
+
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleResetView}
+                        className="bg-slate-900/90 backdrop-blur text-slate-200 hover:bg-slate-800 border border-slate-700/50 shadow-lg h-9 px-3"
+                        title="Reset View"
+                    >
+                        <Maximize className="w-4 h-4" />
+                    </Button>
+                </div>
+
+                <MapControls position="bottom-right" showCompass={false} showLocate={false} />
+
+                {/* Render a marker for each node */}
+                {nodesToRender.map((node) => (
+                    <MapMarker
+                        key={node.id}
+                        longitude={node.location!.coordinates!.lng}
+                        latitude={node.location!.coordinates!.lat}
+                    >
+                        <MarkerContent>
+                            <div className="relative group cursor-pointer">
+                                {/* Pulse effect for online nodes */}
+                                {node.status === 'online' && (
+                                    <div className="absolute -inset-1 bg-emerald-500/30 rounded-full animate-ping opacity-75" />
+                                )}
+                                {/* Main Dot */}
+                                <div className={cn(
+                                    "w-3 h-3 rounded-full border border-white/90 shadow-lg transition-transform group-hover:scale-125",
+                                    node.status === 'online' ? "bg-emerald-500" :
+                                        node.status === 'degraded' ? "bg-amber-500" :
+                                            "bg-red-500"
+                                )} />
+                            </div>
+                        </MarkerContent>
+
+                        <MarkerPopup className="p-0 border-none bg-transparent shadow-none max-w-[320px]">
+                            <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 w-[300px]">
+                                {/* Header */}
+                                <div className="p-3 border-b border-slate-700/50 bg-slate-800/50 text-left">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className={cn(
+                                            "flex items-center justify-center w-7 h-7 rounded-lg shrink-0",
+                                            node.status === 'online' ? "bg-emerald-500/20 text-emerald-500" :
+                                                node.status === 'degraded' ? "bg-amber-500/20 text-amber-500" :
+                                                    "bg-red-500/20 text-red-500"
+                                        )}>
+                                            <Server className="w-3.5 h-3.5" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="font-bold text-xs text-slate-100 truncate" title={node.id}>
+                                                {node.id}
+                                            </h3>
+                                            <p className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                                                <span className={cn(
+                                                    "w-1 h-1 rounded-full",
+                                                    node.status === 'online' ? "bg-emerald-500" :
+                                                        node.status === 'degraded' ? "bg-amber-500" :
+                                                            "bg-red-500"
+                                                )} />
+                                                <span className="capitalize">{node.status}</span>
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 shrink-0"
-                                    onClick={() => setSelectedCountry(null)}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
 
-                            {/* Status summary */}
-                            <div className="flex gap-3 mt-3">
-                                {(() => {
-                                    const summary = getStatusSummary(selectedCountry.nodes);
-                                    return (
-                                        <>
-                                            <div className="flex items-center gap-1.5 text-xs">
-                                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                <span className="text-slate-300">{summary.online} online</span>
+                                {/* Content */}
+                                <div className="p-3 space-y-3 text-left">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="bg-slate-800/20 p-2 rounded-lg">
+                                            <div className="text-[10px] text-slate-500 flex items-center gap-1 mb-1">
+                                                <Activity className="w-3 h-3" />
+                                                <span>Uptime</span>
                                             </div>
-                                            {summary.degraded > 0 && (
-                                                <div className="flex items-center gap-1.5 text-xs">
-                                                    <span className="w-2 h-2 rounded-full bg-amber-500" />
-                                                    <span className="text-slate-300">{summary.degraded} degraded</span>
-                                                </div>
-                                            )}
-                                            {summary.offline > 0 && (
-                                                <div className="flex items-center gap-1.5 text-xs">
-                                                    <span className="w-2 h-2 rounded-full bg-red-500" />
-                                                    <span className="text-slate-300">{summary.offline} offline</span>
-                                                </div>
-                                            )}
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                        </div>
+                                            <div className="text-xs font-semibold text-slate-200">
+                                                {node.uptime.toFixed(2)}%
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-800/20 p-2 rounded-lg">
+                                            <div className="text-[10px] text-slate-500 flex items-center gap-1 mb-1">
+                                                <Clock className="w-3 h-3" />
+                                                <span>Latency</span>
+                                            </div>
+                                            <div className="text-xs font-semibold text-slate-200">
+                                                {node.responseTime}ms
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        {/* Nodes list */}
-                        <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-                            {selectedCountry.nodes
-                                .sort((a, b) => {
-                                    // Sort by status: online first, then degraded, then offline
-                                    const statusOrder = { online: 0, degraded: 1, offline: 2 };
-                                    return statusOrder[a.status] - statusOrder[b.status];
-                                })
-                                .map(node => (
-                                    <Link
-                                        key={node.id}
-                                        href={`/nodes/${node.id}`}
-                                        className="block bg-slate-900/50 rounded-lg p-3 border border-slate-700/50 hover:border-primary/50 hover:bg-slate-900/80 transition-all group"
+                                    <div className="bg-slate-800/30 rounded-lg p-2.5 border border-slate-700/30">
+                                        <div className="text-[10px] text-slate-500 flex items-center gap-1 mb-1">
+                                            <Shield className="w-3 h-3" />
+                                            <span>Location</span>
+                                        </div>
+                                        <div className="text-xs text-slate-300 truncate">
+                                            {node.location?.city || 'Unknown'}, {node.location?.country || 'Unknown'}
+                                        </div>
+                                        <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                                            {node.location?.coordinates?.lat.toFixed(4)}, {node.location?.coordinates?.lng.toFixed(4)}
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        size="sm"
+                                        className="w-full h-8 text-xs bg-primary hover:bg-primary/90 text-white"
+                                        onClick={() => router.push(`/nodes/${node.id}`)}
                                     >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                <Server className="h-4 w-4 text-slate-500 group-hover:text-slate-300 shrink-0" />
-                                                <span className="font-mono text-sm text-slate-200 truncate group-hover:text-white transition-colors">
-                                                    {node.id}
-                                                </span>
-                                            </div>
-                                            <span className={cn(
-                                                "w-2 h-2 rounded-full shrink-0 mt-1.5",
-                                                node.status === 'online' && "bg-emerald-500",
-                                                node.status === 'degraded' && "bg-amber-500",
-                                                node.status === 'offline' && "bg-red-500"
-                                            )} />
-                                        </div>
-                                        <div className="flex items-center gap-3 mt-2 text-xs text-slate-500 group-hover:text-slate-400">
-                                            {node.location?.city && (
-                                                <span className="flex items-center gap-1">
-                                                    <MapPin className="h-3 w-3" />
-                                                    {node.location.city}
-                                                </span>
-                                            )}
-                                            <span>Up: {node.uptime.toFixed(1)}%</span>
-                                            <span>{node.responseTime}ms</span>
-                                        </div>
-                                        <div className="flex items-center justify-end mt-1">
-                                            <span className="text-xs text-emerald-400/70 group-hover:text-emerald-400 flex items-center gap-0.5">
-                                                View details <ChevronRight className="h-3 w-3" />
-                                            </span>
-                                        </div>
-                                    </Link>
-                                ))}
-                        </div>
-                    </div>
-                </>
-            )}
+                                        View Details <ChevronRight className="w-3 h-3 ml-1" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </MarkerPopup>
+                    </MapMarker>
+                ))}
+            </Map>
         </div>
     );
 }
 
 export const WorldMap = memo(WorldMapComponent);
-

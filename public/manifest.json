@@ -5,42 +5,57 @@
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0f172a",
-    "theme_color": "#10b981",
+    "theme_color": "#5913c6",
     "orientation": "any",
     "icons": [
         {
             "src": "/icon-192.png",
             "sizes": "192x192",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         },
         {
             "src": "/icon-512.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         }
     ],
     "categories": [
         "utilities",
         "finance"
     ],
-    "screenshots": [],
+    "screenshots": [
+        {
+            "src": "/dashboard-preview.png",
+            "sizes": "1920x898",
+            "type": "image/png",
+            "form_factor": "wide"
+        },
+        {
+            "src": "/dashboard-preview.png",
+            "sizes": "1920x898",
+            "type": "image/png"
+        }
+    ],
     "shortcuts": [
         {
             "name": "Dashboard",
             "url": "/",
-            "description": "View network dashboard"
+            "description": "View network dashboard",
+            "icons": [{ "src": "/icon-96.png", "sizes": "96x96", "type": "image/png" }]
         },
         {
             "name": "Map",
             "url": "/map",
-            "description": "View geographic distribution"
+            "description": "View geographic distribution",
+            "icons": [{ "src": "/icon-96.png", "sizes": "96x96", "type": "image/png" }]
         },
         {
             "name": "Analytics",
             "url": "/analytics",
-            "description": "View network analytics"
+            "description": "View network analytics",
+            "icons": [{ "src": "/icon-96.png", "sizes": "96x96", "type": "image/png" }]
         }
     ]
 }

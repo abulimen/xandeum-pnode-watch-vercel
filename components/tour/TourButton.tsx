@@ -82,7 +82,7 @@ export function TourButton() {
                         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                         className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-[60] max-w-xs"
                     >
-                        <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+                        <div className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-background/95 backdrop-blur-xl">
                             <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 p-4">
                                 <div className="flex items-start gap-3">
                                     <motion.div

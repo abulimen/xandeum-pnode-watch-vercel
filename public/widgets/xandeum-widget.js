@@ -34,6 +34,7 @@
     const BASE_URL = getBaseUrl();
     const API_URL = BASE_URL + '/api/stats';
     const DASHBOARD_URL = BASE_URL;
+    const widgetStates = {}; // { containerId: { type: 'badge', network: 'all' } }
 
     // Format bytes using 1024-based calculation
     function formatBytes(bytes) {
@@ -60,9 +61,13 @@
     }
 
     // Fetch network stats
-    async function fetchStats() {
+    async function fetchStats(network = 'all') {
         try {
-            const response = await fetch(API_URL);
+            const url = network === 'all'
+                ? API_URL
+                : `${API_URL}?network=${network}`;
+
+            const response = await fetch(url);
             const result = await response.json();
             if (result.success && result.data) {
                 return result.data;
@@ -74,233 +79,95 @@
         }
     }
 
-    // Create badge widget
-    function createBadgeWidget(container, stats) {
-        const healthScore = stats.totalNodes > 0
-            ? Math.round((stats.onlineNodes / stats.totalNodes) * 100)
-            : 0;
-        const healthClass = healthScore >= 90 ? 'excellent' : healthScore >= 70 ? 'good' : 'warning';
+    // Create toggle HTML
+    function createToggleHtml(currentNetwork, containerId) {
+        const networks = [
+            { id: 'devnet', label: 'Dev' },
+            { id: 'mainnet', label: 'Main' },
+            { id: 'all', label: 'All' }
+        ];
 
-        const html = `
-            <a href="${DASHBOARD_URL}" target="_blank" rel="noopener noreferrer" class="xw-badge-link">
-                <div class="xw-badge">
-                    <div class="xw-badge-header">
-                        <img src="${BASE_URL}/logo.png" alt="Xandeum" class="xw-logo-icon" />
-                        <span class="xw-brand">PNODE WATCH</span>
-                        <span class="xw-live">
-                            <span class="xw-live-dot"></span>
-                            LIVE
-                        </span>
-                    </div>
-                    <div class="xw-stats-grid">
-                        <div class="xw-stat">
-                            <span class="xw-stat-value">${stats.totalNodes}</span>
-                            <span class="xw-stat-label">Nodes</span>
-                        </div>
-                        <div class="xw-stat">
-                            <span class="xw-stat-value xw-online">${stats.onlineNodes}</span>
-                            <span class="xw-stat-label">Online</span>
-                        </div>
-                        <div class="xw-stat">
-                            <span class="xw-stat-value">${stats.avgUptime.toFixed(1)}%</span>
-                            <span class="xw-stat-label">Uptime</span>
-                        </div>
-                    </div>
-                    <div class="xw-health">
-                        <div class="xw-health-header">
-                            <span class="xw-health-label">Network Health</span>
-                            <span class="xw-health-value ${healthClass}">${healthScore}%</span>
-                        </div>
-                        <div class="xw-health-bar">
-                            <div class="xw-health-fill ${healthClass}" style="width: ${healthScore}%"></div>
-                        </div>
-                    </div>
-                    <div class="xw-footer">
-                        <span class="xw-elite">🏆 ${stats.eliteNodes || 0} Elite</span>
-                        <span class="xw-powered">Xandeum Network</span>
-                    </div>
-                </div>
-            </a>
+        return `
+            <div class="xw-toggle" onclick="event.stopPropagation()">
+                ${networks.map(n => `
+                    <button 
+                        class="xw-toggle-btn ${currentNetwork === n.id ? 'active' : ''}" 
+                        data-network="${n.id}"
+                        data-container="${containerId}"
+                    >${n.label}</button>
+                `).join('')}
+            </div>
         `;
+    }
 
-        const styles = `
-            :host {
-                display: block;
-                font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-            }
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
-            .xw-badge-link {
-                text-decoration: none;
-                display: inline-block;
-            }
-            .xw-badge {
-                width: 280px;
-                max-width: 100%;
-                padding: 20px;
-                background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
-                border-radius: 16px;
-                border: 1px solid rgba(99, 102, 241, 0.2);
-                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 60px rgba(99, 102, 241, 0.08);
-                transition: all 0.3s ease;
-                position: relative;
-                overflow: hidden;
-            }
-            .xw-badge::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: 2px;
-                background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.5), transparent);
-            }
-            .xw-badge:hover {
-                transform: translateY(-4px);
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 80px rgba(99, 102, 241, 0.12);
-                border-color: rgba(99, 102, 241, 0.4);
-            }
-            .xw-badge-header {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                margin-bottom: 18px;
-                padding-bottom: 14px;
-                border-bottom: 1px solid rgba(100, 116, 139, 0.2);
-            }
-            .xw-logo-icon {
-                width: 26px;
-                height: 26px;
-                object-fit: contain;
-                filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5));
-            }
-            .xw-brand {
-                font-size: 16px;
-                font-weight: 700;
-                letter-spacing: 2px;
-                background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-                flex: 1;
-            }
-            .xw-live {
-                display: flex;
-                align-items: center;
-                gap: 5px;
-                padding: 4px 10px;
-                background: rgba(16, 185, 129, 0.12);
-                border: 1px solid rgba(16, 185, 129, 0.25);
-                border-radius: 6px;
-                font-size: 10px;
-                font-weight: 600;
-                letter-spacing: 1px;
-                color: #10b981;
-            }
-            .xw-live-dot {
-                width: 6px;
-                height: 6px;
-                background: #10b981;
-                border-radius: 50%;
-                animation: xw-blink 1.5s ease-in-out infinite;
-            }
-            @keyframes xw-blink {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.3; }
-            }
-            .xw-stats-grid {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 12px;
-                margin-bottom: 18px;
-            }
-            .xw-stat {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 4px;
-                padding: 12px 8px;
-                background: rgba(15, 23, 42, 0.6);
-                border-radius: 10px;
-                border: 1px solid rgba(100, 116, 139, 0.1);
-            }
-            .xw-stat-value {
-                font-size: 18px;
-                font-weight: 700;
-                color: #f1f5f9;
-                font-variant-numeric: tabular-nums;
-            }
-            .xw-stat-value.xw-online {
-                color: #10b981;
-            }
-            .xw-stat-label {
-                font-size: 10px;
-                font-weight: 500;
-                letter-spacing: 0.5px;
-                color: #64748b;
-                text-transform: uppercase;
-            }
-            .xw-health {
-                margin-bottom: 16px;
-            }
-            .xw-health-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 8px;
-            }
-            .xw-health-label {
-                font-size: 11px;
-                font-weight: 500;
-                letter-spacing: 0.5px;
-                color: #94a3b8;
-                text-transform: uppercase;
-            }
-            .xw-health-value {
-                font-size: 13px;
-                font-weight: 700;
-            }
-            .xw-health-value.excellent { color: #10b981; }
-            .xw-health-value.good { color: #f59e0b; }
-            .xw-health-value.warning { color: #ef4444; }
-            .xw-health-bar {
-                height: 6px;
-                background: rgba(100, 116, 139, 0.2);
-                border-radius: 3px;
-                overflow: hidden;
-            }
-            .xw-health-fill {
-                height: 100%;
-                border-radius: 3px;
-                transition: width 0.5s ease;
-            }
-            .xw-health-fill.excellent { background: linear-gradient(90deg, #10b981, #34d399); }
-            .xw-health-fill.good { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-            .xw-health-fill.warning { background: linear-gradient(90deg, #ef4444, #f87171); }
-            .xw-footer {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding-top: 14px;
-                border-top: 1px solid rgba(100, 116, 139, 0.15);
-            }
-            .xw-elite {
-                font-size: 11px;
-                font-weight: 500;
-                color: #f59e0b;
-            }
-            .xw-powered {
-                font-size: 10px;
-                font-weight: 500;
-                color: #475569;
-                letter-spacing: 0.5px;
-            }
-        `;
+    const toggleStyles = `
+        .xw-toggle {
+            display: inline-flex;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 20px;
+            padding: 2px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            margin-left: auto;
+            pointer-events: auto;
+        }
+        .xw-toggle-btn {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.2s;
+            line-height: 1.4;
+        }
+        .xw-toggle-btn:hover {
+            color: #94a3b8;
+        }
+        .xw-toggle-btn.active {
+            background: #6366f1;
+            color: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+    `;
 
-        // Use existing shadow root or create new one
+    // Update widget network
+    async function updateWidgetNetwork(containerId, network) {
+        if (widgetStates[containerId]) {
+            widgetStates[containerId].network = network;
+
+            // Re-init with new network
+            const container = document.getElementById(containerId);
+            if (container) {
+                if (widgetStates[containerId].type === 'nodeStatus') {
+                    await initNodeStatusWidget(containerId, widgetStates[containerId].nodeId);
+                } else {
+                    await initWidget(containerId, widgetStates[containerId].type);
+                }
+            }
+        }
+    }
+
+    // Bind toggle events
+    function bindToggleEvents(container, containerId) {
+        const shadow = container.shadowRoot;
+        if (!shadow) return;
+
+        const btns = shadow.querySelectorAll('.xw-toggle-btn');
+        btns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const network = btn.dataset.network;
+                updateWidgetNetwork(containerId, network);
+            });
+        });
+    }
+
+    // Helper to update Shadow DOM
+    function updateShadowRoot(container, html, styles) {
         let shadow = container.shadowRoot;
         if (!shadow) {
             container.innerHTML = '';
@@ -309,14 +176,128 @@
         shadow.innerHTML = `<style>${styles}</style>${html}`;
     }
 
+    // Create badge widget
+    function createBadgeWidget(container, stats, containerId) {
+        const state = widgetStates[containerId] || { network: 'all' };
+        const healthScore = stats.totalNodes > 0
+            ? Math.round((stats.onlineNodes / stats.totalNodes) * 100)
+            : 0;
+        const healthClass = healthScore >= 90 ? 'excellent' : healthScore >= 70 ? 'good' : 'warning';
+
+        const html = `
+            <div class="xw-badge-container">
+                <div class="xw-badge">
+                    <div class="xw-badge-header">
+                        <img src="${BASE_URL}/logo.png" alt="Xandeum" class="xw-logo-icon" />
+                        <span class="xw-brand">PNODE WATCH</span>
+                        ${createToggleHtml(state.network, containerId)}
+                    </div>
+                    <a href="${DASHBOARD_URL}" target="_blank" rel="noopener noreferrer" class="xw-badge-link">
+                        <div class="xw-stats-grid">
+                            <div class="xw-stat">
+                                <span class="xw-stat-value">${stats.totalNodes}</span>
+                                <span class="xw-stat-label">Nodes</span>
+                            </div>
+                            <div class="xw-stat">
+                                <span class="xw-stat-value xw-online">${stats.onlineNodes}</span>
+                                <span class="xw-stat-label">Online</span>
+                            </div>
+                            <div class="xw-stat">
+                                <span class="xw-stat-value">${stats.avgUptime.toFixed(1)}%</span>
+                                <span class="xw-stat-label">Uptime</span>
+                            </div>
+                        </div>
+                        <div class="xw-health">
+                            <div class="xw-health-header">
+                                <span class="xw-health-label">Network Health</span>
+                                <span class="xw-health-value ${healthClass}">${healthScore}%</span>
+                            </div>
+                            <div class="xw-health-bar">
+                                <div class="xw-health-fill ${healthClass}" style="width: ${healthScore}%"></div>
+                            </div>
+                        </div>
+                        <div class="xw-footer">
+                            <span class="xw-elite">🏆 ${stats.eliteNodes || 0} Elite</span>
+                            <span class="xw-powered">Xandeum Network</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        `;
+
+        const styles = `
+            :host { display: block; font-family: 'Inter', system-ui, sans-serif; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            .xw-badge-link { text-decoration: none; display: block; color: inherit; }
+            .xw-badge-container { display: flex; justify-content: center; } 
+            .xw-badge {
+                width: 280px; max-width: 100%; padding: 20px;
+                background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+                border-radius: 16px; border: 1px solid rgba(99, 102, 241, 0.2);
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+                position: relative; overflow: hidden;
+            }
+            .xw-badge::before {
+                content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+                background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.5), transparent);
+            }
+            .xw-badge-header {
+                display: flex; align-items: center; gap: 10px;
+                margin-bottom: 18px; padding-bottom: 14px;
+                border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+            }
+            .xw-logo-icon { width: 26px; height: 26px; object-fit: contain; }
+            .xw-brand {
+                font-size: 14px; font-weight: 700; letter-spacing: 1px;
+                background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+                -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            }
+            .xw-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+            .xw-stat {
+                display: flex; flex-direction: column; align-items: center; gap: 4px;
+                padding: 12px 8px; background: rgba(15, 23, 42, 0.6);
+                border-radius: 10px; border: 1px solid rgba(100, 116, 139, 0.1);
+            }
+            .xw-stat-value { font-size: 18px; font-weight: 700; color: #f1f5f9; }
+            .xw-stat-value.xw-online { color: #10b981; }
+            .xw-stat-label { font-size: 10px; font-weight: 500; color: #64748b; text-transform: uppercase; }
+            .xw-health { margin-bottom: 16px; }
+            .xw-health-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+            .xw-health-label { font-size: 11px; font-weight: 500; color: #94a3b8; text-transform: uppercase; }
+            .xw-health-value { font-size: 13px; font-weight: 700; }
+            .xw-health-value.excellent { color: #10b981; }
+            .xw-health-value.good { color: #f59e0b; }
+            .xw-health-value.warning { color: #ef4444; }
+            .xw-health-bar { height: 6px; background: rgba(100, 116, 139, 0.2); border-radius: 3px; overflow: hidden; }
+            .xw-health-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+            .xw-health-fill.excellent { background: #10b981; }
+            .xw-health-fill.good { background: #f59e0b; }
+            .xw-health-fill.warning { background: #ef4444; }
+            .xw-footer { display: flex; justify-content: space-between; padding-top: 14px; border-top: 1px solid rgba(100, 116, 139, 0.15); }
+            .xw-elite { font-size: 11px; font-weight: 500; color: #f59e0b; }
+            .xw-powered { font-size: 10px; font-weight: 500; color: #475569; }
+            
+            ${toggleStyles}
+        `;
+
+        updateShadowRoot(container, html, styles);
+        bindToggleEvents(container, containerId);
+    }
+
     // Create ticker widget
-    function createTickerWidget(container, stats) {
+    function createTickerWidget(container, stats, containerId) {
+        const state = widgetStates[containerId] || { network: 'all' };
         const healthScore = stats.totalNodes > 0
             ? Math.round((stats.onlineNodes / stats.totalNodes) * 100)
             : 0;
 
+        const toggleHtml = createToggleHtml(state.network, containerId);
+
         const html = `
             <div class="xw-ticker">
+                <div class="xw-ticker-controls">
+                    ${toggleHtml}
+                </div>
                 <div class="xw-ticker-track">
                     <div class="xw-ticker-content">
                         ${[0, 1].map(() => `
@@ -324,10 +305,7 @@
                                 <div class="xw-ticker-item xw-brand-item">
                                     <img src="${BASE_URL}/logo.png" alt="Xandeum" class="xw-logo" />
                                     <span class="xw-brand-text">PNODE WATCH</span>
-                                    <span class="xw-live-badge">
-                                        <span class="xw-dot"></span>
-                                        LIVE
-                                    </span>
+                                    <span class="xw-live-badge"><span class="xw-dot"></span>LIVE</span>
                                 </div>
                                 <div class="xw-divider"></div>
                                 <div class="xw-ticker-item">
@@ -359,137 +337,39 @@
         `;
 
         const styles = `
-            :host {
-                display: block;
-                width: 100%;
-                font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-            }
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
+            :host { display: block; width: 100%; font-family: 'Inter', system-ui, sans-serif; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
             .xw-ticker {
-                width: 100%;
-                height: 48px;
-                background: linear-gradient(135deg, #0a0f1a 0%, #0f172a 50%, #0a0f1a 100%);
-                overflow: hidden;
-                position: relative;
+                width: 100%; height: 48px; position: relative;
+                background: linear-gradient(135deg, #0a0f1a 0%, #0f172a 100%);
                 border-top: 1px solid rgba(99, 102, 241, 0.15);
                 border-bottom: 1px solid rgba(99, 102, 241, 0.15);
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 40px rgba(99, 102, 241, 0.05);
-            }
-            .xw-ticker::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: 1px;
-                background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
-            }
-            .xw-ticker-track {
-                height: 100%;
-                display: flex;
-                align-items: center;
                 overflow: hidden;
             }
-            .xw-ticker-content {
-                display: flex;
-                animation: xw-scroll 40s linear infinite;
+            .xw-ticker-controls {
+                position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+                z-index: 10; padding-left: 20px;
+                background: linear-gradient(90deg, transparent, #0f172a 20%);
             }
-            @keyframes xw-scroll {
-                0% { transform: translateX(0); }
-                100% { transform: translateX(-50%); }
-            }
-            .xw-ticker-items {
-                display: flex;
-                align-items: center;
-                gap: 32px;
-                padding: 0 24px;
-                white-space: nowrap;
-            }
-            .xw-ticker-item {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            .xw-brand-item {
-                gap: 10px;
-            }
-            .xw-logo {
-                width: 22px;
-                height: 22px;
-                object-fit: contain;
-                filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));
-            }
-            .xw-brand-text {
-                font-size: 15px;
-                font-weight: 700;
-                letter-spacing: 2px;
-                background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-            }
-            .xw-live-badge {
-                display: flex;
-                align-items: center;
-                gap: 5px;
-                padding: 3px 8px;
-                background: rgba(16, 185, 129, 0.12);
-                border: 1px solid rgba(16, 185, 129, 0.25);
-                border-radius: 4px;
-                font-size: 10px;
-                font-weight: 600;
-                letter-spacing: 1px;
-                color: #10b981;
-            }
-            .xw-dot {
-                width: 6px;
-                height: 6px;
-                background: #10b981;
-                border-radius: 50%;
-                animation: xw-blink 1.5s ease-in-out infinite;
-            }
-            @keyframes xw-blink {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.3; }
-            }
-            .xw-divider {
-                width: 1px;
-                height: 24px;
-                background: linear-gradient(180deg, transparent, rgba(100, 116, 139, 0.3), transparent);
-            }
-            .xw-label {
-                font-size: 10px;
-                font-weight: 600;
-                letter-spacing: 1.2px;
-                color: #64748b;
-                text-transform: uppercase;
-            }
-            .xw-value {
-                font-size: 14px;
-                font-weight: 600;
-                color: #e2e8f0;
-                font-variant-numeric: tabular-nums;
-            }
-            .xw-value.xw-green { color: #10b981; }
-            .xw-value.xw-purple { color: #6366f1; }
-            .xw-value.xw-amber { color: #f59e0b; }
-            .xw-value.xw-red { color: #ef4444; }
-            .xw-spacer {
-                width: 80px;
-            }
+            .xw-ticker-track { height: 100%; display: flex; align-items: center; }
+            .xw-ticker-content { display: flex; animation: xw-scroll 40s linear infinite; }
+            @keyframes xw-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+            .xw-ticker-items { display: flex; align-items: center; gap: 32px; padding: 0 24px; white-space: nowrap; }
+            .xw-ticker-item { display: flex; align-items: center; gap: 8px; }
+            .xw-brand-item { gap: 10px; }
+            .xw-logo { width: 22px; height: 22px; }
+            .xw-brand-text { font-size: 15px; font-weight: 700; background: linear-gradient(135deg, #fff, #a5b4fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+            .xw-live-badge { display: flex; align-items: center; gap: 5px; padding: 3px 8px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); border-radius: 4px; font-size: 10px; color: #10b981; }
+            .xw-dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; }
+            .xw-divider { width: 1px; height: 24px; background: rgba(100,116,139,0.3); }
+            .xw-label { font-size: 10px; font-weight: 600; color: #64748b; }
+            .xw-value { font-size: 14px; font-weight: 600; color: #e2e8f0; }
+            .xw-green { color: #10b981; } .xw-purple { color: #6366f1; }
+            ${toggleStyles}
         `;
 
-        // Use existing shadow root or create new one
-        let shadow = container.shadowRoot;
-        if (!shadow) {
-            container.innerHTML = '';
-            shadow = container.attachShadow({ mode: 'open' });
-        }
-        shadow.innerHTML = `<style>${styles}</style>${html}`;
+        updateShadowRoot(container, html, styles);
+        bindToggleEvents(container, containerId);
     }
 
     // Loading state
@@ -582,9 +462,16 @@
             return;
         }
 
+        // Initialize state if checking for the first time
+        if (!widgetStates[containerId]) {
+            widgetStates[containerId] = { type, network: 'all' };
+        } else {
+            widgetStates[containerId].type = type;
+        }
+
         showLoading(container, type);
 
-        const stats = await fetchStats();
+        const stats = await fetchStats(widgetStates[containerId].network);
 
         if (!stats) {
             showError(container, type);
@@ -592,13 +479,13 @@
         }
 
         if (type === 'badge') {
-            createBadgeWidget(container, stats);
+            createBadgeWidget(container, stats, containerId);
         } else if (type === 'ticker') {
-            createTickerWidget(container, stats);
+            createTickerWidget(container, stats, containerId);
         } else if (type === 'leaderboard') {
-            createLeaderboardWidget(container, stats);
+            createLeaderboardWidget(container, stats, containerId);
         } else {
-            createBadgeWidget(container, stats);
+            createBadgeWidget(container, stats, containerId);
         }
 
         // Auto-refresh every 60 seconds
@@ -610,7 +497,7 @@
                     if (type === 'badge') {
                         createBadgeContent(container.shadowRoot, newStats);
                     } else if (type === 'leaderboard') {
-                        createLeaderboardWidget(container, newStats);
+                        createLeaderboardWidget(container, newStats, containerId);
                     } else {
                         createTickerContent(container.shadowRoot, newStats);
                     }
@@ -656,40 +543,9 @@
         console.log('[Xandeum Widget] Stats updated:', stats);
     }
 
-    // Expose global API
-    window.XandeumWidget = {
-        badge: function (containerId) {
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => initWidget(containerId, 'badge'));
-            } else {
-                initWidget(containerId, 'badge');
-            }
-        },
-        ticker: function (containerId) {
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => initWidget(containerId, 'ticker'));
-            } else {
-                initWidget(containerId, 'ticker');
-            }
-        },
-        nodeStatus: function (containerId, nodeId) {
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => initNodeStatusWidget(containerId, nodeId));
-            } else {
-                initNodeStatusWidget(containerId, nodeId);
-            }
-        },
-        leaderboard: function (containerId) {
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => initWidget(containerId, 'leaderboard'));
-            } else {
-                initWidget(containerId, 'leaderboard');
-            }
-        }
-    };
-
     // Create leaderboard widget with Shadow DOM
-    function createLeaderboardWidget(container, stats) {
+    function createLeaderboardWidget(container, stats, containerId) {
+        const state = widgetStates[containerId] || { network: 'all' };
         const topNodes = stats.topNodes || [];
 
         const getRankIcon = (rank) => {
@@ -719,150 +575,56 @@
         `).join('');
 
         const html = `
-            <a href="${DASHBOARD_URL}/leaderboard" target="_blank" rel="noopener noreferrer" class="xw-lb-link">
-                <div class="xw-leaderboard">
-                    <div class="xw-lb-header">
-                        <img src="${BASE_URL}/logo.png" alt="Xandeum" class="xw-logo-icon" />
-                        <span class="xw-lb-brand">TOP NODES</span>
-                        <span class="xw-live">
-                            <span class="xw-live-dot"></span>
-                            LIVE
-                        </span>
-                    </div>
+            <div class="xw-leaderboard">
+                <div class="xw-lb-header">
+                    <img src="${BASE_URL}/logo.png" alt="Xandeum" class="xw-logo-icon" />
+                    <span class="xw-lb-brand">TOP NODES</span>
+                    ${createToggleHtml(state.network, containerId)}
+                </div>
+                <a href="${DASHBOARD_URL}/leaderboard" target="_blank" rel="noopener noreferrer" class="xw-lb-link">
                     <div class="xw-lb-list">
                         ${nodesHtml || '<div class="xw-lb-empty">No data available</div>'}
                     </div>
-                    <div class="xw-lb-footer">
-                        <span class="xw-lb-more">View Full Leaderboard →</span>
-                        <span class="xw-lb-powered">Xandeum Network</span>
-                    </div>
+                </a>
+                <div class="xw-lb-footer">
+                    <span class="xw-lb-more">View Full Leaderboard →</span>
+                    <span class="xw-lb-powered">Xandeum Network</span>
                 </div>
-            </a>
+            </div>
         `;
 
         const styles = `
+            :host { display: block; font-family: 'Inter', system-ui, sans-serif; }
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            .xw-lb-link { text-decoration: none; display: block; }
+            .xw-lb-link { text-decoration: none; display: block; color: inherit; }
             .xw-leaderboard {
-                width: 300px;
-                padding: 16px;
-                background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
-                border-radius: 14px;
-                border: 1px solid rgba(245, 158, 11, 0.2);
-                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-                font-family: 'Inter', -apple-system, sans-serif;
-                transition: all 0.3s ease;
+                width: 300px; padding: 16px; background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+                border-radius: 14px; border: 1px solid rgba(245, 158, 11, 0.2);
+                box-shadow: 0 10px 40px rgba(0,0,0,0.4);
             }
-            .xw-leaderboard:hover {
-                transform: translateY(-4px);
-                border-color: rgba(245, 158, 11, 0.4);
-            }
-            .xw-lb-header {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin-bottom: 12px;
-                padding-bottom: 10px;
-                border-bottom: 1px solid rgba(100, 116, 139, 0.2);
-            }
-            .xw-logo-icon {
-                width: 22px;
-                height: 22px;
-                object-fit: contain;
-            }
-            .xw-lb-brand {
-                font-size: 13px;
-                font-weight: 700;
-                letter-spacing: 1.5px;
-                background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                flex: 1;
-            }
-            .xw-live {
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                padding: 3px 8px;
-                background: rgba(16, 185, 129, 0.12);
-                border: 1px solid rgba(16, 185, 129, 0.25);
-                border-radius: 5px;
-                font-size: 9px;
-                font-weight: 600;
-                letter-spacing: 1px;
-                color: #10b981;
-            }
-            .xw-live-dot {
-                width: 5px;
-                height: 5px;
-                background: #10b981;
-                border-radius: 50%;
-                animation: xw-blink 1.5s ease-in-out infinite;
-            }
-            @keyframes xw-blink {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.3; }
-            }
-            .xw-lb-list {
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-                margin-bottom: 12px;
-            }
-            .xw-lb-item {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                padding: 8px 10px;
-                background: rgba(15, 23, 42, 0.6);
-                border-radius: 8px;
-                border: 1px solid rgba(100, 116, 139, 0.1);
-            }
-            .xw-lb-item.rank-1 { border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.05); }
-            .xw-lb-item.rank-2 { border-color: rgba(148, 163, 184, 0.3); }
-            .xw-lb-item.rank-3 { border-color: rgba(180, 83, 9, 0.3); }
-            .xw-lb-rank { font-size: 14px; width: 24px; text-align: center; color: #f1f5f9; }
-            .xw-lb-info { flex: 1; min-width: 0; }
-            .xw-lb-id {
-                display: block;
-                font-size: 11px;
-                font-weight: 600;
-                font-family: 'SF Mono', monospace;
-                color: #f1f5f9;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-            .xw-lb-uptime { font-size: 9px; color: #64748b; }
-            .xw-lb-score {
-                font-size: 13px;
-                font-weight: 700;
-            }
-            .xw-lb-score.excellent { color: #10b981; }
-            .xw-lb-score.good { color: #f59e0b; }
-            .xw-lb-score.warning { color: #ef4444; }
-            .xw-lb-empty { color: #64748b; text-align: center; padding: 20px; font-size: 12px; }
-            .xw-lb-footer {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding-top: 10px;
-                border-top: 1px solid rgba(100, 116, 139, 0.15);
-            }
-            .xw-lb-more { font-size: 10px; font-weight: 500; color: #f59e0b; }
-            .xw-lb-powered { font-size: 9px; color: #475569; }
+            .xw-lb-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(100,116,139,0.2); }
+            .xw-logo-icon { width: 22px; height: 22px; }
+            .xw-lb-brand { font-size: 13px; font-weight: 700; background: linear-gradient(135deg, #f59e0b, #fbbf24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; flex: 1; }
+            .xw-lb-list { display: flex; flex-direction: column; gap: 8px; min-height: 200px; }
+            .xw-lb-item { display: flex; align-items: center; gap: 10px; padding: 8px; background: rgba(15,23,42,0.4); border-radius: 8px; border: 1px solid rgba(100,116,139,0.1); }
+            .xw-lb-rank { font-size: 14px; width: 20px; text-align: center; }
+            .xw-lb-info { flex: 1; overflow: hidden; }
+            .xw-lb-id { display: block; font-size: 12px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .xw-lb-uptime { display: block; font-size: 10px; color: #64748b; }
+            .xw-lb-score { font-size: 12px; font-weight: 700; color: #f59e0b; }
+            .xw-lb-footer { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(100,116,139,0.15); }
+            .xw-lb-more { font-size: 11px; color: #6366f1; font-weight: 500; cursor: pointer; }
+            .xw-lb-powered { font-size: 10px; color: #475569; }
+            ${toggleStyles}
         `;
 
-        if (!container.shadowRoot) {
-            const shadow = container.attachShadow({ mode: 'open' });
-            shadow.innerHTML = `<style>${styles}</style>${html}`;
-        } else {
-            container.shadowRoot.innerHTML = `<style>${styles}</style>${html}`;
-        }
+        updateShadowRoot(container, html, styles);
+        bindToggleEvents(container, containerId);
     }
 
     // Create node status widget with Shadow DOM
-    function createNodeStatusWidget(container, node) {
+    // NOTE: This widget displays a SINGLE node's status - NO network toggle needed
+    function createNodeStatusWidget(container, node, containerId) {
         const formatBytes = (bytes) => {
             if (bytes >= 1e12) return (bytes / 1e12).toFixed(1) + ' TB';
             if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + ' GB';
@@ -878,11 +640,13 @@
         const storagePercent = node.storage > 0 ? Math.round((node.storageUsed / node.storage) * 100) : 0;
 
         const html = `
-            <a href="${DASHBOARD_URL}/nodes/${node.fullId}" target="_blank" rel="noopener noreferrer" class="xw-ns-link">
-                <div class="xw-node-status">
-                    <div class="xw-ns-header">
-                        <img src="${BASE_URL}/logo.png" alt="Xandeum" class="xw-logo-icon" />
-                        <span class="xw-ns-brand">NODE STATUS</span>
+            <div class="xw-node-status">
+                <div class="xw-ns-header">
+                    <img src="${BASE_URL}/logo.png" alt="Xandeum" class="xw-logo-icon" />
+                    <span class="xw-ns-brand">NODE STATUS</span>
+                </div>
+                <a href="${DASHBOARD_URL}/nodes/${node.fullId}" target="_blank" rel="noopener noreferrer" class="xw-ns-link">
+                    <div class="xw-ns-header-status">
                         <span class="xw-ns-status ${node.status}">
                             <span class="xw-ns-dot"></span>
                             ${node.status.toUpperCase()}
@@ -918,13 +682,13 @@
                         <span class="xw-ns-version">v${node.version}</span>
                         <span class="xw-ns-powered">Xandeum Network</span>
                     </div>
-                </div>
-            </a>
+                </a>
+            </div>
         `;
 
         const styles = `
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            .xw-ns-link { text-decoration: none; display: block; }
+            .xw-ns-link { text-decoration: none; display: block; color: inherit; }
             .xw-node-status {
                 width: 280px;
                 padding: 16px;
@@ -943,10 +707,11 @@
                 display: flex;
                 align-items: center;
                 gap: 8px;
-                margin-bottom: 12px;
-                padding-bottom: 10px;
+                margin-bottom: 8px;
+                padding-bottom: 8px;
                 border-bottom: 1px solid rgba(100, 116, 139, 0.2);
             }
+            .xw-ns-header-status { display: flex; justify-content: flex-end; margin-bottom: 8px; }
             .xw-logo-icon {
                 width: 20px;
                 height: 20px;
@@ -1080,12 +845,8 @@
             .xw-ns-powered { font-size: 9px; color: #475569; }
         `;
 
-        if (!container.shadowRoot) {
-            const shadow = container.attachShadow({ mode: 'open' });
-            shadow.innerHTML = `<style>${styles}</style>${html}`;
-        } else {
-            container.shadowRoot.innerHTML = `<style>${styles}</style>${html}`;
-        }
+        updateShadowRoot(container, html, styles);
+        // No toggle events for node status widget - it shows a single specific node
     }
 
     // Initialize node status widget
@@ -1096,9 +857,19 @@
             return;
         }
 
+        // Initialize state if checking for the first time
+        if (!widgetStates[containerId]) {
+            widgetStates[containerId] = { type: 'nodeStatus', network: 'all', nodeId };
+        } else {
+            widgetStates[containerId].type = 'nodeStatus';
+            if (nodeId !== undefined) {
+                widgetStates[containerId].nodeId = nodeId;
+            }
+        }
+
         showLoading(container, 'badge');
 
-        const stats = await fetchStats();
+        const stats = await fetchStats(widgetStates[containerId].network);
 
         if (!stats || !stats.topNodes || stats.topNodes.length === 0) {
             showError(container, 'badge');
@@ -1115,11 +886,11 @@
             node = stats.topNodes[0];
         }
 
-        createNodeStatusWidget(container, node);
+        createNodeStatusWidget(container, node, containerId);
 
         // Auto-refresh every 60 seconds
         setInterval(async () => {
-            const newStats = await fetchStats();
+            const newStats = await fetchStats(widgetStates[containerId].network);
             if (newStats && newStats.topNodes && newStats.topNodes.length > 0) {
                 let refreshNode = null;
                 if (nodeId) {
@@ -1128,11 +899,42 @@
                 if (!refreshNode) {
                     refreshNode = newStats.topNodes[0];
                 }
-                createNodeStatusWidget(container, refreshNode);
+                createNodeStatusWidget(container, refreshNode, containerId);
             }
         }, 60000);
     }
 
+    // Expose global API
+    window.XandeumWidget = {
+        badge: function (containerId) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => initWidget(containerId, 'badge'));
+            } else {
+                initWidget(containerId, 'badge');
+            }
+        },
+        ticker: function (containerId) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => initWidget(containerId, 'ticker'));
+            } else {
+                initWidget(containerId, 'ticker');
+            }
+        },
+        nodeStatus: function (containerId, nodeId) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => initNodeStatusWidget(containerId, nodeId));
+            } else {
+                initNodeStatusWidget(containerId, nodeId);
+            }
+        },
+        leaderboard: function (containerId) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => initWidget(containerId, 'leaderboard'));
+            } else {
+                initWidget(containerId, 'leaderboard');
+            }
+        }
+    };
+
     console.log('[Xandeum Widget] Loaded from ' + BASE_URL + '. Available methods: badge, ticker, nodeStatus, leaderboard');
 })();
-

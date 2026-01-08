@@ -81,32 +81,48 @@ export const dashboardTour: DriveStep[] = [
 ];
 
 /**
- * Map page tour
+ * Map page tour (Network Intelligence Dashboard)
  */
 export const mapTour: DriveStep[] = [
     {
         popover: {
-            title: '🗺️ Geographic Map',
-            description: 'See where pNodes are distributed around the world. Hover over markers for details.',
+            title: '🌐 Network Intelligence',
+            description: 'Your unified view of the global pNode network. See nodes on a map and dive into regional statistics—all in one place.',
             side: 'over',
             align: 'center',
         },
     },
     {
-        element: '[data-tour="map-sidebar"]',
+        element: '[data-tour="map-stats"]',
         popover: {
-            title: '📍 Country Breakdown',
-            description: 'Browse nodes by country and city. Click to filter the map view.',
-            side: 'right',
-            align: 'start',
+            title: '📊 Global Stats',
+            description: 'Quick overview of the entire network: total nodes, active countries, storage capacity, and average uptime.',
+            side: 'bottom',
+            align: 'center',
         },
     },
     {
-        element: '[data-tour="map-container"]',
+        element: '.maplibregl-map',
         popover: {
-            title: '🌍 Interactive Map',
-            description: 'Zoom and pan to explore. Green markers are online, red are offline, yellow are degraded.',
-            side: 'top',
+            title: '🗺️ Interactive Map',
+            description: 'Explore pNode locations worldwide. Green = online, yellow = degraded, red = offline. Use the 3D toggle for a globe view!',
+            side: 'bottom',
+            align: 'center',
+        },
+    },
+    {
+        popover: {
+            title: '🌍 Scroll for Regions',
+            description: 'Scroll down to see the Regional Breakdown. Each card shows node counts, health scores, and storage per country.',
+            side: 'over',
+            align: 'center',
+        },
+    },
+    {
+        popover: {
+            title: 'You\'re All Set! 🎉',
+            description: 'Click any region card to filter the map. Enjoy exploring the network!',
+            side: 'over',
             align: 'center',
         },
     },

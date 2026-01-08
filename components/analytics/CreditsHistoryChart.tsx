@@ -13,15 +13,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PNode } from '@/types/pnode';
+import { useNetworkData } from '@/contexts/NetworkDataContext';
 import {
-    LineChart,
-    Line,
+    AreaChart,
+    Area,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    Area
 } from 'recharts';
 
 interface CreditsHistoryChartProps {
@@ -37,10 +37,12 @@ export function CreditsHistoryChart({
     currentValue,
     className
 }: CreditsHistoryChartProps) {
+    // Get current network from context
+    const { network } = useNetworkData();
 
-    // Fetch history from API
+    // Fetch history from API with network filter
     const { data: historyData, isLoading } = useQuery({
-        queryKey: ['credits-history', nodePublicKey || 'network'],
+        queryKey: ['credits-history', nodePublicKey || 'network', network],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (nodePublicKey) {
@@ -48,6 +50,10 @@ export function CreditsHistoryChart({
                 params.append('id', nodePublicKey);
             } else {
                 params.append('type', 'network');
+                // Add network filter (only for network view, not individual nodes)
+                if (network !== 'all') {
+                    params.append('network', network);
+                }
             }
             params.append('days', '30');
 
@@ -148,8 +154,12 @@ export function CreditsHistoryChart({
                 {chartData ? (
                     <div className="h-full w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={chartData.points} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+                            <AreaChart data={chartData.points} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
                                 <defs>
+                                    <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
+                                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
+                                    </linearGradient>
                                     <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
                                         <stop offset="0%" stopColor="#10b981" />
                                         <stop offset="100%" stopColor="#3b82f6" />
@@ -181,16 +191,17 @@ export function CreditsHistoryChart({
                                     formatter={(value: number) => [value.toLocaleString(), 'Credits']}
                                     labelFormatter={(label) => label}
                                 />
-                                <Line
+                                <Area
                                     type="monotone"
                                     dataKey="value"
                                     stroke="url(#lineGradient)"
                                     strokeWidth={3}
+                                    fill="url(#areaGradient)"
                                     dot={false}
                                     activeDot={{ r: 6, fill: '#3b82f6', strokeWidth: 0 }}
                                     animationDuration={1500}
                                 />
-                            </LineChart>
+                            </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 ) : (

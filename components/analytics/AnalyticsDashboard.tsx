@@ -45,7 +45,7 @@ function StatCard({
     bgClass: string;
 }) {
     return (
-        <Card className="overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-300 group relative">
+        <Card className="overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group relative">
             {/* Subtle gradient background */}
             <div className={cn("absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-500", bgClass)} />
 
@@ -125,15 +125,15 @@ export function AnalyticsDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-tour="analytics-charts">
 
                     {/* Row 1: Credits Trend (Hero) + Health Score */}
-                    <div className="lg:col-span-3">
+                    <div className="lg:col-span-3" data-tour="analytics-credits-chart">
                         <CreditsHistoryChart
                             creditsMap={creditsMap}
                             nodes={enrichedNodes}
                             currentValue={avgCredits}
-                            className="h-full border-none shadow-md"
+                            className="h-full shadow-md"
                         />
                     </div>
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-1" data-tour="analytics-health-score">
                         <NetworkHealthScore
                             nodes={enrichedNodes}
                             avgCredits={avgCredits}
@@ -142,19 +142,21 @@ export function AnalyticsDashboard() {
                     </div>
 
                     {/* Row 2: Quick Stats - Updated Design */}
-                    <StatCard
-                        title="Total Nodes"
-                        value={enrichedNodes.length}
-                        icon={Server}
-                        colorClass="text-blue-500"
-                        bgClass="bg-blue-500"
-                        subtitle={
-                            <span className="flex items-center gap-2">
-                                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-                                {onlineNodes} online
-                            </span>
-                        }
-                    />
+                    <div data-tour="analytics-stats">
+                        <StatCard
+                            title="Total Nodes"
+                            value={enrichedNodes.length}
+                            icon={Server}
+                            colorClass="text-blue-500"
+                            bgClass="bg-blue-500"
+                            subtitle={
+                                <span className="flex items-center gap-2">
+                                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
+                                    {onlineNodes} online
+                                </span>
+                            }
+                        />
+                    </div>
                     <StatCard
                         title="Avg Credits"
                         value={avgCredits.toLocaleString()}
@@ -202,10 +204,10 @@ export function AnalyticsDashboard() {
                     </div>
 
                     {/* Row 4: AI Summary + Alerts */}
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-2" data-tour="analytics-ai-summary">
                         <NetworkSummary />
                     </div>
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-2" data-tour="analytics-alerts">
                         <AlertsPanel issues={issues} isLoading={isLoading} />
                     </div>
 

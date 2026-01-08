@@ -54,9 +54,6 @@ export default function CalculatorPage() {
                                 <p className="font-medium text-blue-500">For pNode Operators Only</p>
                                 <p className="text-muted-foreground">
                                     This calculator is for <strong>pNode operators</strong> who run storage nodes on the Xandeum network.
-                                    It estimates rewards from the <strong>10,000 XAND/month</strong> fixed allocation plus your share of
-                                    <strong> Storage Income (STOINC)</strong> from network fees.
-                                    If you're looking to stake XAND tokens, this is not the right tool.
                                 </p>
                                 <Link
                                     href="https://docs.xandeum.network/heartbeat-credit-system"

@@ -16,20 +16,32 @@ interface TokenData {
 export function PriceTicker() {
     const pathname = usePathname();
     const [tokenData, setTokenData] = useState<TokenData | null>(null);
+    const [solPrice, setSolPrice] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
 
     useEffect(() => {
-        const fetchPrice = async () => {
+        const fetchPrices = async () => {
             try {
-                const res = await fetch('/api/token');
-                if (!res.ok) throw new Error('Failed to fetch');
-                const data = await res.json();
+                // Fetch XAND price
+                const xandRes = await fetch('/api/token');
+                if (!xandRes.ok) throw new Error('Failed to fetch XAND');
+                const xandData = await xandRes.json();
                 setTokenData({
-                    price: data.price,
-                    priceChange24h: data.priceChange24h,
-                    symbol: data.symbol,
+                    price: xandData.price,
+                    priceChange24h: xandData.priceChange24h,
+                    symbol: xandData.symbol,
                 });
+
+                // Fetch SOL price from our server-side API (which has Jupiter API key)
+                const solRes = await fetch('/api/xandsol');
+                if (solRes.ok) {
+                    const solData = await solRes.json();
+                    if (solData.solPrice) {
+                        setSolPrice(solData.solPrice);
+                    }
+                }
+
                 setError(false);
             } catch (err) {
                 console.error('Price ticker error:', err);
@@ -39,9 +51,9 @@ export function PriceTicker() {
             }
         };
 
-        fetchPrice();
+        fetchPrices();
         // Refresh every 60 seconds
-        const interval = setInterval(fetchPrice, 60000);
+        const interval = setInterval(fetchPrices, 60000);
         return () => clearInterval(interval);
     }, []);
 
@@ -65,8 +77,11 @@ export function PriceTicker() {
 
     const isPositive = tokenData.priceChange24h >= 0;
 
+    // Calculate XAND to SOL conversion (only if we have real SOL price)
+    const xandInSol = solPrice ? (tokenData.price / solPrice) : null;
+
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t" data-tour="price-ticker">
+        <div className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-sm border-t" data-tour="price-ticker">
             <div className="container mx-auto px-4">
                 <div className="flex items-center justify-between h-10 sm:h-12 gap-4 text-sm">
                     {/* Left side - Price info */}
@@ -94,15 +109,16 @@ export function PriceTicker() {
                         {/* Separator - Desktop only */}
                         <div className="hidden sm:block h-4 w-px bg-border" />
 
-                        {/* SOL Conversion - Desktop only */}
-                        <div className="hidden sm:flex items-center gap-1.5 text-muted-foreground shrink-0">
-                            <span className="text-xs">1 XAND</span>
-                            <span className="text-xs">=</span>
-                            <span className="text-xs font-mono">
-                                {/* Approx conversion based on price (assuming SOL ~$100) */}
-                                {(tokenData.price / 100).toFixed(8)} SOL
-                            </span>
-                        </div>
+                        {/* SOL Conversion - Desktop only (only show if we have real SOL price) */}
+                        {xandInSol !== null && (
+                            <div className="hidden sm:flex items-center gap-1.5 text-muted-foreground shrink-0">
+                                <span className="text-xs">1 XAND</span>
+                                <span className="text-xs">=</span>
+                                <span className="text-xs font-mono">
+                                    {xandInSol.toFixed(8)} SOL
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Right side - Trade button */}
@@ -121,3 +137,4 @@ export function PriceTicker() {
         </div>
     );
 }
+

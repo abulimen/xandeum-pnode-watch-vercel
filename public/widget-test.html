@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Test</title>
+    <style>
+        body { background: #0f172a; color: white; padding: 20px; font-family: sans-serif; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .widget-container { border: 1px solid #334155; padding: 20px; border-radius: 8px; }
+        h2 { margin-top: 0; font-size: 1.2rem; margin-bottom: 1rem; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <h1>Xandeum Widget Test</h1>
+    
+    <div class="grid">
+        <div class="widget-container">
+            <h2>Badge Widget</h2>
+            <div id="badge-widget"></div>
+        </div>
+
+        <div class="widget-container">
+            <h2>Leaderboard Widget</h2>
+            <div id="leaderboard-widget"></div>
+        </div>
+
+        <div class="widget-container">
+            <h2>Node Status Widget (Top Node)</h2>
+            <div id="node-status-widget"></div>
+        </div>
+    </div>
+
+    <div class="widget-container" style="margin-top: 20px;">
+        <h2>Ticker Widget</h2>
+        <div id="ticker-widget"></div>
+    </div>
+
+    <script src="/widgets/xandeum-widget.js"></script>
+    <script>
+        // Wait for script to load (simulated by timeout or just calling it if synchronous)
+        // The script is self-executing but exposes window.XandeumWidget
+        
+        window.onload = function() {
+            setTimeout(() => {
+                if (window.XandeumWidget) {
+                    console.log('Initializing widgets...');
+                    window.XandeumWidget.badge('badge-widget');
+                    window.XandeumWidget.leaderboard('leaderboard-widget');
+                    window.XandeumWidget.nodeStatus('node-status-widget');
+                    window.XandeumWidget.ticker('ticker-widget');
+                } else {
+                    console.error('XandeumWidget not found');
+                }
+            }, 500);
+        };
+    </script>
+</body>
+</html>

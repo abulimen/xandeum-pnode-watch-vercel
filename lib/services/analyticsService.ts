@@ -5,7 +5,7 @@
 
 import { PNode, NetworkStats } from '@/types/pnode';
 import { NodeIssue } from '@/types/issues';
-import { fetchCredits, calculateCreditStats } from './creditsService';
+
 
 /**
  * Thresholds for issue detection
@@ -104,7 +104,7 @@ export function calculateNetworkStats(nodes: PNode[]): NetworkStats {
     const degradedNodes = nodes.filter(n => n.status === 'degraded').length;
     const publicNodes = nodes.filter(n => n.isPublic).length;
     const privateNodes = nodes.length - publicNodes;
-    const eliteNodes = nodes.filter(n => n.status === 'online' && n.uptime >= 99.5).length; // Online nodes with 99.5%+ uptime
+    const eliteNodes = nodes.filter(n => n.uptime >= 99.5).length; // All nodes with 99.5%+ uptime (regardless of current status)
 
     const avgUptime = nodes.reduce((sum, n) => sum + n.uptime, 0) / nodes.length;
     const avgResponseTime = nodes.reduce((sum, n) => sum + n.responseTime, 0) / nodes.length;
@@ -399,7 +399,7 @@ export function getVersionType(version: string): VersionType {
  * Get uptime reliability badge
  */
 export function getUptimeBadge(uptime: number): 'elite' | 'reliable' | 'average' | 'unreliable' {
-    if (uptime >= 99) return 'elite';      // 🏆 99%+
+    if (uptime >= 99.5) return 'elite';    // 🏆 99.5%+
     if (uptime >= 95) return 'reliable';   // ✅ 95-99%
     if (uptime >= 80) return 'average';    // ⚡ 80-95%
     return 'unreliable';                    // ⚠️ < 80%
@@ -426,7 +426,7 @@ export function enrichNodesWithStakingData(nodes: PNode[]): PNode[] {
  */
 export function getTopStakingNodes(nodes: PNode[], count: number = 5): PNode[] {
     return nodes
-        .filter(n => n.status !== 'offline')
+        .filter(n => (n.credits ?? 0) > 0) // Include all nodes with credits (even offline)
         .sort((a, b) => (b.credits ?? 0) - (a.credits ?? 0))
         .slice(0, count);
 }

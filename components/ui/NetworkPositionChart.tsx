@@ -45,7 +45,7 @@ export function NetworkPositionChart({
                 {buckets.map((count, i) => (
                     <div
                         key={i}
-                        className="flex-1 bg-muted rounded-t-sm transition-all hover:bg-muted-foreground/30"
+                        className="flex-1 bg-muted dark:bg-white/20 rounded-t-sm transition-all hover:bg-muted-foreground/30 dark:hover:bg-white/40"
                         style={{ height: `${Math.max(10, (count / maxCount) * 100)}%` }}
                     />
                 ))}

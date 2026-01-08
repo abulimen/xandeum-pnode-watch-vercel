@@ -20,7 +20,12 @@ const SEED_IPS = (process.env.NEXT_PUBLIC_PNODE_SEED_IPS || '').split(',').filte
 const RPC_PORT = parseInt(process.env.NEXT_PUBLIC_PNODE_RPC_PORT || '6000', 10);
 const RPC_ENDPOINT = process.env.NEXT_PUBLIC_PNODE_RPC_ENDPOINT || '/rpc';
 const CRON_SECRET = process.env.CRON_SECRET;
-const CREDITS_API_URL = 'https://podcredits.xandeum.network/api/pods-credits';
+
+// Network-specific credits API URLs
+const CREDITS_API_URLS = {
+    devnet: 'https://podcredits.xandeum.network/api/pods-credits',
+    mainnet: 'https://podcredits.xandeum.network/api/mainnet-pod-credits',
+};
 
 // Constants for status determination (MUST match prpcService.ts)
 const ONLINE_THRESHOLD_SECONDS = 60;
@@ -82,12 +87,18 @@ function httpRequest(seedIP: string): Promise<{
 }
 
 /**
- * Fetch credits from Xandeum API
+ * Fetch credits from Xandeum API for a specific network
  */
-async function fetchCredits(): Promise<Map<string, number>> {
+async function fetchCreditsForNetwork(network: 'devnet' | 'mainnet'): Promise<Map<string, number>> {
     try {
-        const response = await fetch(CREDITS_API_URL, { next: { revalidate: 0 } });
-        if (!response.ok) return new Map();
+        const url = CREDITS_API_URLS[network];
+        console.log(`[cron/snapshot] Fetching ${network} credits from ${url}...`);
+
+        const response = await fetch(url, { next: { revalidate: 0 } });
+        if (!response.ok) {
+            console.error(`[cron/snapshot] ${network} credits API returned ${response.status}`);
+            return new Map();
+        }
 
         const json = await response.json();
         if (json.status !== 'success' || !Array.isArray(json.pods_credits)) {
@@ -100,9 +111,10 @@ async function fetchCredits(): Promise<Map<string, number>> {
                 creditsMap.set(item.pod_id, item.credits);
             }
         }
+        console.log(`[cron/snapshot] Got ${creditsMap.size} credits for ${network}`);
         return creditsMap;
     } catch (error) {
-        console.error('[cron/snapshot] Failed to fetch credits:', error);
+        console.error(`[cron/snapshot] Failed to fetch ${network} credits:`, error);
         return new Map();
     }
 }
@@ -259,9 +271,11 @@ export async function GET(request: NextRequest) {
             }, { status: 502 });
         }
 
-        // Fetch credits
-        const creditsMap = await fetchCredits();
-        console.log(`[cron/snapshot] Got credits for ${creditsMap.size} nodes`);
+        // Fetch credits for BOTH networks
+        const [devnetCreditsMap, mainnetCreditsMap] = await Promise.all([
+            fetchCreditsForNetwork('devnet'),
+            fetchCreditsForNetwork('mainnet'),
+        ]);
 
         // Transform pods to nodes (matching prpcService exactly)
         const maxTimestamp = Math.max(...rawPods.map(p => p.last_seen_timestamp || 0));
@@ -270,37 +284,10 @@ export async function GET(request: NextRequest) {
         // Enrich with staking data (legacy)
         const enrichedNodes = enrichNodesWithStakingData(nodes);
 
-        // Enrich with credits
-        const nodesWithCredits = enrichedNodes.map(node => ({
-            ...node,
-            credits: creditsMap.get(node.publicKey) ?? 0
-        }));
-
-        // Calculate stats
-        const onlineNodes = nodesWithCredits.filter(n => n.status === 'online').length;
-        const offlineNodes = nodesWithCredits.filter(n => n.status === 'offline').length;
-        const degradedNodes = nodesWithCredits.filter(n => n.status === 'degraded').length;
-        const totalStorage = nodesWithCredits.reduce((sum, n) => sum + (n.storage?.total || 0), 0);
-        const usedStorage = nodesWithCredits.reduce((sum, n) => sum + (n.storage?.used || 0), 0);
-
-        // Average uptime
-        const avgUptime = nodesWithCredits.length > 0
-            ? nodesWithCredits.reduce((sum, n) => sum + n.uptime, 0) / nodesWithCredits.length
-            : 0;
-
-        // Average staking score
-        const avgStakingScore = nodesWithCredits.length > 0
-            ? nodesWithCredits.reduce((sum, n) => sum + (n.stakingScore || 0), 0) / nodesWithCredits.length
-            : 0;
-
-        // Credits stats
-        const totalCredits = Array.from(creditsMap.values()).reduce((sum, c) => sum + c, 0);
-        const avgCredits = creditsMap.size > 0 ? totalCredits / creditsMap.size : 0;
-
-        console.log(`[cron/snapshot] Stats - avgUptime: ${avgUptime.toFixed(2)}%, avgCredits: ${avgCredits.toFixed(0)}`);
-
         // Dynamically import DB functions to catch initialization errors (e.g. read-only FS)
-        let createSnapshot, insertNodeSnapshots, pruneOldSnapshots;
+        let createSnapshot: typeof import('@/lib/db/queries').createSnapshot;
+        let insertNodeSnapshots: typeof import('@/lib/db/queries').insertNodeSnapshots;
+        let pruneOldSnapshots: typeof import('@/lib/db/queries').pruneOldSnapshots;
         try {
             const dbQueries = await import('@/lib/db/queries');
             createSnapshot = dbQueries.createSnapshot;
@@ -316,53 +303,78 @@ export async function GET(request: NextRequest) {
             }, { status: 500 });
         }
 
-        // Create snapshot
-        const snapshotId = await createSnapshot({
-            total_nodes: nodesWithCredits.length,
-            online_nodes: onlineNodes,
-            degraded_nodes: degradedNodes,
-            offline_nodes: offlineNodes,
-            total_storage_bytes: totalStorage,
-            used_storage_bytes: usedStorage,
-            avg_uptime: avgUptime,
-            avg_staking_score: avgStakingScore,
-            total_credits: totalCredits,
-            avg_credits: avgCredits
-        });
+        // Helper to create a snapshot for a specific network
+        async function createNetworkSnapshot(
+            network: 'devnet' | 'mainnet',
+            creditsMap: Map<string, number>
+        ) {
+            // Enrich nodes with credits for this network
+            const nodesWithCredits = enrichedNodes.map(node => ({
+                ...node,
+                credits: creditsMap.get(node.publicKey) ?? 0
+            }));
 
-        // Insert node snapshots (deduplicated by node_id)
-        const nodeDataMap = new Map<string, typeof nodesWithCredits[0]>();
-        for (const node of nodesWithCredits) {
-            nodeDataMap.set(node.id, node);
-        }
+            // Calculate stats
+            const onlineNodes = nodesWithCredits.filter(n => n.status === 'online').length;
+            const offlineNodes = nodesWithCredits.filter(n => n.status === 'offline').length;
+            const degradedNodes = nodesWithCredits.filter(n => n.status === 'degraded').length;
+            const totalStorage = nodesWithCredits.reduce((sum, n) => sum + (n.storage?.total || 0), 0);
+            const usedStorage = nodesWithCredits.reduce((sum, n) => sum + (n.storage?.used || 0), 0);
 
-        const nodeData = Array.from(nodeDataMap.values()).map(node => ({
-            node_id: node.id,
-            public_key: node.publicKey,
-            status: node.status,
-            uptime_percent: node.uptime,
-            storage_usage_percent: node.storage?.usagePercent || 0,
-            staking_score: node.stakingScore || 0,
-            credits: node.credits || 0,
-            version: node.version,
-            is_public: node.isPublic,
-        }));
+            // Average uptime
+            const avgUptime = nodesWithCredits.length > 0
+                ? nodesWithCredits.reduce((sum, n) => sum + n.uptime, 0) / nodesWithCredits.length
+                : 0;
 
-        await insertNodeSnapshots(snapshotId, nodeData);
+            // Average staking score
+            const avgStakingScore = nodesWithCredits.length > 0
+                ? nodesWithCredits.reduce((sum, n) => sum + (n.stakingScore || 0), 0) / nodesWithCredits.length
+                : 0;
 
-        // Prune old snapshots
-        const prunedCount = await pruneOldSnapshots(30);
+            // Credits stats for this network
+            const totalCredits = Array.from(creditsMap.values()).reduce((sum, c) => sum + c, 0);
+            const avgCredits = creditsMap.size > 0 ? totalCredits / creditsMap.size : 0;
 
-        // Process alerts for subscribers
-        const baseUrl = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || '';
-        console.log(`[cron/snapshot] Processing alerts with baseUrl: ${baseUrl}`);
-        const alertStats = await processAlerts(nodeData, baseUrl);
-        console.log(`[cron/snapshot] Alerts sent - offline: ${alertStats.offlineAlerts}, score drops: ${alertStats.scoreDropAlerts}, errors: ${alertStats.errors}`);
+            console.log(`[cron/snapshot] ${network} stats - avgUptime: ${avgUptime.toFixed(2)}%, avgCredits: ${avgCredits.toFixed(0)}, nodes with credits: ${creditsMap.size}`);
 
-        return NextResponse.json({
-            success: true,
-            data: {
+            // Create snapshot with network field
+            const snapshotId = await createSnapshot({
+                network,
+                total_nodes: nodesWithCredits.length,
+                online_nodes: onlineNodes,
+                degraded_nodes: degradedNodes,
+                offline_nodes: offlineNodes,
+                total_storage_bytes: totalStorage,
+                used_storage_bytes: usedStorage,
+                avg_uptime: avgUptime,
+                avg_staking_score: avgStakingScore,
+                total_credits: totalCredits,
+                avg_credits: avgCredits
+            });
+
+            // Insert node snapshots (deduplicated by node_id)
+            const nodeDataMap = new Map<string, typeof nodesWithCredits[0]>();
+            for (const node of nodesWithCredits) {
+                nodeDataMap.set(node.id, node);
+            }
+
+            const nodeData = Array.from(nodeDataMap.values()).map(node => ({
+                node_id: node.id,
+                public_key: node.publicKey,
+                status: node.status,
+                uptime_percent: node.uptime,
+                storage_usage_percent: node.storage?.usagePercent || 0,
+                staking_score: node.stakingScore || 0,
+                credits: node.credits || 0,
+                version: node.version,
+                is_public: node.isPublic,
+            }));
+
+            await insertNodeSnapshots(snapshotId, nodeData);
+
+            return {
                 snapshotId,
+                network,
                 nodeCount: nodesWithCredits.length,
                 onlineNodes,
                 offlineNodes,
@@ -370,11 +382,48 @@ export async function GET(request: NextRequest) {
                 avgUptime: Math.round(avgUptime * 100) / 100,
                 avgStakingScore: Math.round(avgStakingScore * 100) / 100,
                 avgCredits: Math.round(avgCredits),
+                nodesWithCredits: creditsMap.size,
+                nodeData, // For alerts
+            };
+        }
+
+        // Create snapshots for both networks
+        const [devnetResult, mainnetResult] = await Promise.all([
+            createNetworkSnapshot('devnet', devnetCreditsMap),
+            createNetworkSnapshot('mainnet', mainnetCreditsMap),
+        ]);
+
+        // Prune old snapshots
+        const prunedCount = await pruneOldSnapshots(30);
+
+        // Process alerts using combined node data (use devnet for alerts as primary)
+        const baseUrl = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || '';
+        console.log(`[cron/snapshot] Processing alerts with baseUrl: ${baseUrl}`);
+        const alertStats = await processAlerts(devnetResult.nodeData, baseUrl);
+        console.log(`[cron/snapshot] Alerts sent - offline: ${alertStats.offlineAlerts}, score drops: ${alertStats.scoreDropAlerts}, errors: ${alertStats.errors}`);
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                devnet: {
+                    snapshotId: devnetResult.snapshotId,
+                    nodeCount: devnetResult.nodeCount,
+                    onlineNodes: devnetResult.onlineNodes,
+                    avgCredits: devnetResult.avgCredits,
+                    nodesWithCredits: devnetResult.nodesWithCredits,
+                },
+                mainnet: {
+                    snapshotId: mainnetResult.snapshotId,
+                    nodeCount: mainnetResult.nodeCount,
+                    onlineNodes: mainnetResult.onlineNodes,
+                    avgCredits: mainnetResult.avgCredits,
+                    nodesWithCredits: mainnetResult.nodesWithCredits,
+                },
                 prunedSnapshots: prunedCount,
                 alertsSent: alertStats.offlineAlerts + alertStats.scoreDropAlerts,
                 alertErrors: alertStats.errors,
             },
-            message: `Snapshot created with ${nodesWithCredits.length} nodes, ${alertStats.offlineAlerts + alertStats.scoreDropAlerts} alerts sent`,
+            message: `Created snapshots for devnet (${devnetResult.nodesWithCredits} credits) and mainnet (${mainnetResult.nodesWithCredits} credits)`,
         });
 
     } catch (error) {

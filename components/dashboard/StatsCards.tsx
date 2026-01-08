@@ -53,7 +53,7 @@ function StatCard({
 }: StatCardProps) {
     if (isLoading) {
         return (
-            <Card className="overflow-hidden border border-border/50 shadow-sm bg-card h-full">
+            <Card className="overflow-hidden h-full glass-card">
                 <CardContent className="p-5">
                     <div className="flex items-center justify-between mb-4">
                         <Skeleton className="h-4 w-24" />
@@ -74,7 +74,7 @@ function StatCard({
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             className="h-full"
         >
-            <Card className="overflow-hidden border border-border/50 shadow-sm bg-card h-full min-h-[160px] flex flex-col hover:shadow-lg hover:border-border transition-shadow duration-200">
+            <Card className="overflow-hidden h-full min-h-[160px] flex flex-col glass-card glass-glow">
                 <CardContent className="p-5 flex flex-col h-full">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-4">

@@ -29,6 +29,7 @@ import { formatRelativeTime, formatBytes, formatDuration } from '@/lib/services/
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { FavoriteButton } from '@/components/ui/FavoriteButton';
+import { useNetwork } from '@/contexts/NetworkDataContext';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -45,6 +46,7 @@ interface NodeTableProps {
     onNodeSelect?: (nodeId: string) => void;
     onCompareAdd?: (nodeId: string) => void;
     selectedForCompare?: string[];
+    viewMode?: 'table' | 'cards';
 }
 
 interface SortableHeaderProps {
@@ -103,7 +105,9 @@ function MobileNodeCard({ node, onSelect, onCompareAdd, isSelected }: {
     isSelected: boolean;
 }) {
     const router = useRouter();
+    const { getNodeNetworks } = useNetwork();
     const storagePercent = node.storage.usagePercent || 0;
+    const networks = getNodeNetworks(node.publicKey || node.id);
 
     const handleCardClick = (e: React.MouseEvent) => {
         // Don't navigate if clicking on buttons/dropdowns
@@ -135,7 +139,7 @@ function MobileNodeCard({ node, onSelect, onCompareAdd, isSelected }: {
                         </span>
                         {node.isPublic && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/20">
-                                PUB
+                                Public
                             </span>
                         )}
                     </div>
@@ -191,19 +195,38 @@ function MobileNodeCard({ node, onSelect, onCompareAdd, isSelected }: {
                     </div>
                     <div className="flex flex-col">
                         <span className="text-xs text-muted-foreground">Credits</span>
-                        <div className="flex items-center gap-2">
-                            <span className="font-bold">
-                                {node.credits?.toLocaleString() ?? '--'}
+                        <span className="font-bold">
+                            {node.credits?.toLocaleString() ?? '--'}
+                        </span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-xs text-muted-foreground">Version</span>
+                        <span className="font-medium font-mono text-xs">
+                            {node.version || '--'}
+                        </span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-xs text-muted-foreground">Network</span>
+                        {networks.length === 0 ? (
+                            <span className="text-muted-foreground">--</span>
+                        ) : networks.includes('mainnet') && networks.includes('devnet') ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium border border-purple-500/20 w-fit">
+                                Both
                             </span>
-                            {node.versionType && node.versionType !== 'mainnet' && node.versionType !== 'unknown' && (
-                                <VersionBadge version={node.version} versionType={node.versionType} />
-                            )}
-                        </div>
+                        ) : networks.includes('mainnet') ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/20 w-fit">
+                                Mainnet
+                            </span>
+                        ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium border border-amber-500/20 w-fit">
+                                Devnet
+                            </span>
+                        )}
                     </div>
                     <div className="flex flex-col">
                         <span className="text-xs text-muted-foreground">Online For</span>
                         <span className="font-medium">
-                            {node.status === 'offline' ? 'Offline' : formatDuration(node.uptimeSeconds || 0)}
+                            {formatDuration(node.uptimeSeconds || 0)}
                         </span>
                     </div>
                     <div className="flex flex-col">
@@ -308,8 +331,10 @@ export function NodeTable({
     onNodeSelect,
     onCompareAdd,
     selectedForCompare = [],
+    viewMode = 'table',
 }: NodeTableProps) {
     const router = useRouter();
+    const { getNodeNetworks } = useNetwork();
 
     const copyToClipboard = (text: string, label: string = 'Node ID') => {
         navigator.clipboard.writeText(text);
@@ -376,8 +401,11 @@ export function NodeTable({
 
     return (
         <>
-            {/* Desktop Table View */}
-            <div className="hidden md:block rounded-md border shadow-sm overflow-hidden">
+            {/* Desktop Table View - shown when viewMode is 'table' */}
+            <div className={cn(
+                "rounded-md border shadow-sm overflow-hidden",
+                viewMode === 'table' ? "hidden md:block" : "hidden"
+            )}>
                 <Table>
                     <TableHeader className="bg-muted/50">
                         <TableRow>
@@ -393,6 +421,8 @@ export function NodeTable({
                             <TableHead>
                                 <SortableHeader column="stakingScore" label="Credits" currentColumn={sortColumn} direction={sortDirection} onSort={onSort} />
                             </TableHead>
+                            <TableHead className="w-[80px]">Version</TableHead>
+                            <TableHead className="w-[80px]">Network</TableHead>
                             <TableHead>
                                 <SortableHeader column="responseTime" label="Online For" currentColumn={sortColumn} direction={sortDirection} onSort={onSort} />
                             </TableHead>
@@ -433,11 +463,11 @@ export function NodeTable({
                                             </Link>
                                             {node.isPublic ? (
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/20">
-                                                    PUB
+                                                    Public
                                                 </span>
                                             ) : (
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium border border-amber-500/20">
-                                                    PRV
+                                                    Private
                                                 </span>
                                             )}
                                             <Button
@@ -487,14 +517,43 @@ export function NodeTable({
                                             ) : (
                                                 <span className="text-muted-foreground">--</span>
                                             )}
-                                            {node.versionType && node.versionType !== 'mainnet' && node.versionType !== 'unknown' && (
-                                                <VersionBadge version={node.version} versionType={node.versionType} />
-                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell>
+                                        <span className="text-sm text-muted-foreground font-mono">
+                                            {node.version || '--'}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>
+                                        {(() => {
+                                            const networks = getNodeNetworks(node.publicKey || node.id);
+                                            if (networks.length === 0) {
+                                                return <span className="text-xs text-muted-foreground">--</span>;
+                                            }
+                                            if (networks.includes('mainnet') && networks.includes('devnet')) {
+                                                return (
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium border border-purple-500/20">
+                                                        Both
+                                                    </span>
+                                                );
+                                            }
+                                            if (networks.includes('mainnet')) {
+                                                return (
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/20">
+                                                        Mainnet
+                                                    </span>
+                                                );
+                                            }
+                                            return (
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium border border-amber-500/20">
+                                                    Devnet
+                                                </span>
+                                            );
+                                        })()}
+                                    </TableCell>
+                                    <TableCell>
                                         <span className="text-sm text-muted-foreground">
-                                            {node.status === 'offline' ? 'Offline' : formatDuration(node.uptimeSeconds || 0)}
+                                            {formatDuration(node.uptimeSeconds || 0)}
                                         </span>
                                     </TableCell>
                                     <TableCell>
@@ -547,7 +606,30 @@ export function NodeTable({
                 </Table>
             </div>
 
-            {/* Mobile Card View */}
+            {/* Desktop Card View - shown when viewMode is 'cards' */}
+            <div className={cn(
+                "space-y-4",
+                viewMode === 'cards' ? "hidden md:block" : "hidden"
+            )}>
+                <MobileSortControls
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                />
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {nodes.map((node) => (
+                        <MobileNodeCard
+                            key={node.id}
+                            node={node}
+                            onSelect={onNodeSelect}
+                            onCompareAdd={onCompareAdd}
+                            isSelected={selectedForCompare.includes(node.id)}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {/* Mobile Card View - always shown on mobile */}
             <div className="md:hidden space-y-4">
                 <MobileSortControls
                     sortColumn={sortColumn}

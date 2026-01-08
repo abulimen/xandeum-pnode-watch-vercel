@@ -1,46 +1,13 @@
 /**
- * useCredits Hook - Fetches official credits from Xandeum API
- * and enriches nodes with credits data
+ * useCredits Hook - Returns credits data from centralized data store
+ * Uses NetworkDataContext for network-aware credits fetching
  */
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useNetworkData } from '@/contexts/NetworkDataContext';
 import { PNode } from '@/types/pnode';
-
-interface CreditsApiResponse {
-    pods_credits: Array<{
-        credits: number;
-        pod_id: string;
-    }>;
-    status: string;
-}
-
-async function fetchCreditsFromAPI(): Promise<Map<string, number>> {
-    // Use local proxy to bypass CORS
-    const response = await fetch('/api/credits');
-
-    if (!response.ok) {
-        throw new Error('Failed to fetch credits');
-    }
-
-    const json: CreditsApiResponse = await response.json();
-
-    if (json.status !== 'success' || !Array.isArray(json.pods_credits)) {
-        throw new Error('Invalid credits response');
-    }
-
-    const creditsMap = new Map<string, number>();
-    for (const item of json.pods_credits) {
-        if (item.pod_id && typeof item.credits === 'number') {
-            creditsMap.set(item.pod_id, item.credits);
-        }
-    }
-
-    console.log(`[credits] Loaded ${creditsMap.size} credits from API`);
-    return creditsMap;
-}
 
 interface UseCreditsResult {
     creditsMap: Map<string, number>;
@@ -52,19 +19,9 @@ interface UseCreditsResult {
 }
 
 export function useCredits(): UseCreditsResult {
-    const { data: creditsMap, isLoading, error } = useQuery({
-        queryKey: ['credits'],
-        queryFn: fetchCreditsFromAPI,
-        staleTime: 60000, // 1 minute
-        refetchInterval: 120000, // 2 minutes
-        refetchOnWindowFocus: false,
-    });
+    const { creditsMap, isLoading, error } = useNetworkData();
 
     const stats = useMemo(() => {
-        if (!creditsMap) {
-            return { totalCredits: 0, avgCredits: 0, creditsThreshold: 0 };
-        }
-
         const values = Array.from(creditsMap.values()).filter(v => v > 0);
         if (values.length === 0) {
             return { totalCredits: 0, avgCredits: 0, creditsThreshold: 0 };
@@ -85,9 +42,9 @@ export function useCredits(): UseCreditsResult {
     }, [creditsMap]);
 
     return {
-        creditsMap: creditsMap || new Map(),
+        creditsMap,
         isLoading,
-        error: error as Error | null,
+        error,
         ...stats,
     };
 }

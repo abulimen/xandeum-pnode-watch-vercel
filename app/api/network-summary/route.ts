@@ -10,8 +10,8 @@ const RPC_ENDPOINT = process.env.NEXT_PUBLIC_PNODE_RPC_ENDPOINT || '/rpc';
 const LONGCAT_API_KEY = process.env.LONGCAT_API_KEY || '';
 const LONGCAT_API_URL = process.env.LONGCAT_API_URL || 'https://api.longcat.chat/openai/v1/chat/completions';
 
-// Cache for network summary (1 hour TTL)
-let cachedSummary: { data: NetworkSummaryData; timestamp: number } | null = null;
+// Cache for network summary (1 hour TTL) - keyed by network
+let cachedSummary: Record<string, { data: NetworkSummaryData; timestamp: number }> = {};
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 export interface NetworkSummaryData {
@@ -78,13 +78,13 @@ function httpRequest(seedIP: string, method: string): Promise<{
     });
 }
 
-async function fetchNetworkData(): Promise<{ nodes: any[]; credits: Record<string, number> }> {
+async function fetchNetworkData(network: 'mainnet' | 'devnet' | 'all' = 'all'): Promise<{ nodes: any[]; credits: Record<string, number> }> {
     // Use the host from environment or fallback to localhost
     const baseUrl = process.env.BASE_URL
         ? `https://${process.env.BASE_URL}`
         : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
 
-    console.log('[network-summary] Fetching data using base URL:', baseUrl);
+    console.log(`[network-summary] Fetching data for network: ${network}, using base URL:`, baseUrl);
 
     let nodes: any[] = [];
     let credits: Record<string, number> = {};
@@ -119,10 +119,13 @@ async function fetchNetworkData(): Promise<{ nodes: any[]; credits: Record<strin
         console.error('[network-summary] Failed to fetch nodes:', e.message || e);
     }
 
-    // Fetch credits from our existing /api/credits endpoint
+    // Fetch credits from our existing /api/credits endpoint with network filter
     try {
-        console.log('[network-summary] Calling /api/credits...');
-        const creditsRes = await fetch(`${baseUrl}/api/credits`, { cache: 'no-store' });
+        const creditsUrl = network !== 'all'
+            ? `${baseUrl}/api/credits?network=${network}`
+            : `${baseUrl}/api/credits`;
+        console.log(`[network-summary] Calling ${creditsUrl}...`);
+        const creditsRes = await fetch(creditsUrl, { cache: 'no-store' });
 
         if (creditsRes.ok) {
             const data = await creditsRes.json();
@@ -132,7 +135,7 @@ async function fetchNetworkData(): Promise<{ nodes: any[]; credits: Record<strin
                         credits[entry.pod_id] = entry.credits;
                     }
                 }
-                console.log(`[network-summary] Got ${Object.keys(credits).length} credits`);
+                console.log(`[network-summary] Got ${Object.keys(credits).length} credits for ${network}`);
             }
         }
     } catch (e) {
@@ -257,8 +260,12 @@ function analyzeNetworkData(nodes: any[], creditsMap: Record<string, number>) {
     };
 }
 
-async function generateAISummary(analysis: ReturnType<typeof analyzeNetworkData>): Promise<NetworkSummaryData> {
+async function generateAISummary(analysis: ReturnType<typeof analyzeNetworkData>, network: string = 'all'): Promise<NetworkSummaryData> {
+    const networkLabel = network === 'all' ? 'All Networks' : network.charAt(0).toUpperCase() + network.slice(1);
+
     const prompt = `You are a network analyst for Xandeum, a decentralized storage network. Analyze the following network data and provide a professional executive summary.
+
+NETWORK: ${networkLabel}
 
 NETWORK DATA:
 - Total pNodes: ${analysis.totalNodes}
@@ -270,14 +277,14 @@ NETWORK DATA:
 - Version distribution: ${analysis.versions.slice(0, 5).map(v => `${v.version}: ${v.count} (${v.percent.toFixed(0)}%)`).join(', ')}
 
 INSTRUCTIONS:
-1. Write a title "Xandeum pNode Network Analysis".
+1. Write a title "Xandeum ${networkLabel} pNode Network Analysis".
 2. Write 2-3 paragraphs analyzing the network health, performance, and version adoption.
 3. Use **bold** for key metrics and positive/negative indicators (e.g., **good operational health**, **excellent performance**, **severe lack of geographic diversity**).
 4. Provide one "Key Recommendation" at the end.
 
 Respond ONLY with valid JSON in this format:
 {
-  "title": "Xandeum pNode Network Analysis",
+  "title": "Xandeum ${networkLabel} pNode Network Analysis",
   "content": "Markdown content with paragraphs and **bold** highlights...",
   "keyRecommendation": "Your recommendation here..."
 }`;
@@ -324,27 +331,33 @@ Respond ONLY with valid JSON in this format:
         console.error('[network-summary] AI generation failed:', error);
 
         // Fallback without AI
+        const networkLabel = network === 'all' ? 'All Networks' : network.charAt(0).toUpperCase() + network.slice(1);
         return {
             generatedAt: new Date().toISOString(),
-            title: 'Xandeum pNode Network Analysis',
-            content: `The Xandeum network currently has **${analysis.totalNodes} pNodes** with **${analysis.onlinePercent.toFixed(1)}% online**. The average health score is **${analysis.avgHealth.toFixed(1)}/100**.\n\nVersion adoption shows **${analysis.versions[0]?.version || 'unknown'}** is the dominant version with **${analysis.versions[0]?.percent.toFixed(1)}%** of nodes.`,
+            title: `Xandeum ${networkLabel} pNode Network Analysis`,
+            content: `The Xandeum ${networkLabel.toLowerCase()} network currently has **${analysis.totalNodes} pNodes** with **${analysis.onlinePercent.toFixed(1)}% online**. The average health score is **${analysis.avgHealth.toFixed(1)}/100**.\n\nVersion adoption shows **${analysis.versions[0]?.version || 'unknown'}** is the dominant version with **${analysis.versions[0]?.percent.toFixed(1)}%** of nodes.`,
             keyRecommendation: 'Ensure all nodes are running the latest version for optimal performance.'
         };
     }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        // Get network from query params
+        const { searchParams } = new URL(request.url);
+        const network = (searchParams.get('network') as 'mainnet' | 'devnet' | 'all') || 'all';
+        const cacheKey = network;
+
         // Check cache
-        if (cachedSummary && (Date.now() - cachedSummary.timestamp) < CACHE_TTL) {
-            console.log('[network-summary] Returning cached summary');
-            return NextResponse.json(cachedSummary.data);
+        if (cachedSummary[cacheKey] && (Date.now() - cachedSummary[cacheKey].timestamp) < CACHE_TTL) {
+            console.log(`[network-summary] Returning cached summary for ${network}`);
+            return NextResponse.json(cachedSummary[cacheKey].data);
         }
 
-        console.log('[network-summary] Generating new summary...');
+        console.log(`[network-summary] Generating new summary for ${network}...`);
 
-        // Fetch data
-        const { nodes, credits } = await fetchNetworkData();
+        // Fetch data with network filter
+        const { nodes, credits } = await fetchNetworkData(network);
 
         if (!nodes.length) {
             return NextResponse.json(
@@ -356,11 +369,11 @@ export async function GET() {
         // Analyze data
         const analysis = analyzeNetworkData(nodes, credits);
 
-        // Generate AI summary
-        const summary = await generateAISummary(analysis);
+        // Generate AI summary with network context
+        const summary = await generateAISummary(analysis, network);
 
         // Cache result
-        cachedSummary = { data: summary, timestamp: Date.now() };
+        cachedSummary[cacheKey] = { data: summary, timestamp: Date.now() };
 
         return NextResponse.json(summary);
     } catch (error) {
@@ -373,8 +386,15 @@ export async function GET() {
 }
 
 // Force regenerate (bypasses cache)
-export async function POST() {
+export async function POST(request: Request) {
     console.log('[network-summary] Force regenerating summary...');
-    cachedSummary = null; // Clear cache
-    return GET(); // Generate fresh
+
+    // Get network from query params
+    const { searchParams } = new URL(request.url);
+    const network = (searchParams.get('network') as 'mainnet' | 'devnet' | 'all') || 'all';
+
+    // Clear cache for this network
+    delete cachedSummary[network];
+
+    return GET(request); // Generate fresh
 }

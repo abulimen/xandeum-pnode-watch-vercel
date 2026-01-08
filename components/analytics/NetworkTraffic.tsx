@@ -65,7 +65,7 @@ export function NetworkTraffic({ nodes, isLoading }: NetworkTrafficProps) {
     }, [nodes]);
 
     return (
-        <Card className="border-none shadow-md h-full">
+        <Card className="shadow-md h-full">
             <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                     <Activity className="h-5 w-5 text-blue-500" />

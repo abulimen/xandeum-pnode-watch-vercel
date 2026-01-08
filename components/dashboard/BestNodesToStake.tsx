@@ -75,10 +75,10 @@ interface BestNodesToStakeProps {
 }
 
 export function BestNodesToStake({ nodes, isLoading, count = 5 }: BestNodesToStakeProps) {
-    // Sort by credits and take top N
+    // Sort by credits and take top N (show all nodes with credits, regardless of status)
     const topNodes = useMemo(() => {
         return nodes
-            .filter(n => n.status !== 'offline' && n.credits !== undefined)
+            .filter(n => n.credits !== undefined && (n.credits ?? 0) > 0)
             .sort((a, b) => (b.credits ?? 0) - (a.credits ?? 0))
             .slice(0, count);
     }, [nodes, count]);

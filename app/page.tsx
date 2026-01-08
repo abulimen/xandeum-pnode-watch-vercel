@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { RefreshBar } from '@/components/layout/RefreshBar';
@@ -74,8 +74,8 @@ export default function DashboardPage() {
         setCountryFilter,
         cityFilter,
         setCityFilter,
-        versionTypeFilter,
-        setVersionTypeFilter,
+        versionFilter,
+        setVersionFilter,
         accessFilter,
         setAccessFilter,
         favoritesOnly,
@@ -86,6 +86,7 @@ export default function DashboardPage() {
         availableRegions,
         availableCountries,
         availableCities,
+        availableVersions,
     } = useNodeFilters(nodesWithLocation);
 
     // Sorting
@@ -114,6 +115,23 @@ export default function DashboardPage() {
 
     // Activity feed
     const { events, clearEvents } = useActivityFeed(enrichedNodes, isLoading);
+
+    // View mode state
+    const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+
+    // Load view mode from localStorage
+    useEffect(() => {
+        const stored = localStorage.getItem('pnode-watch-view-mode');
+        if (stored === 'table' || stored === 'cards') {
+            setViewMode(stored);
+        }
+    }, []);
+
+    // Handle view mode change
+    const handleViewModeChange = (mode: 'table' | 'cards') => {
+        setViewMode(mode);
+        localStorage.setItem('pnode-watch-view-mode', mode);
+    };
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -156,6 +174,8 @@ export default function DashboardPage() {
                             <QuickStatsSummary
                                 nodes={enrichedNodes}
                                 filteredCount={filteredNodes.length}
+                                startItem={filteredNodes.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}
+                                endItem={Math.min(currentPage * pageSize, filteredNodes.length)}
                             />
 
                             {/* Filter Bar */}
@@ -171,8 +191,8 @@ export default function DashboardPage() {
                                     onCountryFilterChange={setCountryFilter}
                                     cityFilter={cityFilter}
                                     onCityFilterChange={setCityFilter}
-                                    versionTypeFilter={versionTypeFilter}
-                                    onVersionTypeFilterChange={setVersionTypeFilter}
+                                    versionFilter={versionFilter}
+                                    onVersionFilterChange={setVersionFilter}
                                     accessFilter={accessFilter}
                                     onAccessFilterChange={setAccessFilter}
                                     favoritesOnly={favoritesOnly}
@@ -184,8 +204,11 @@ export default function DashboardPage() {
                                     availableRegions={availableRegions}
                                     availableCountries={availableCountries}
                                     availableCities={availableCities}
+                                    availableVersions={availableVersions}
                                     hasActiveFilters={hasActiveFilters}
                                     filteredNodes={filteredNodes}
+                                    viewMode={viewMode}
+                                    onViewModeChange={handleViewModeChange}
                                 />
                             </div>
 
@@ -199,6 +222,7 @@ export default function DashboardPage() {
                                     onSort={setSort}
                                     onCompareAdd={addNode}
                                     selectedForCompare={selectedNodes}
+                                    viewMode={viewMode}
                                 />
                             </div>
 

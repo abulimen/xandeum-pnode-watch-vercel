@@ -8,29 +8,13 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-    Activity,
-    BarChart3,
-    Map,
-    Trophy,
     Menu,
-    X,
-    BookOpen,
     Search,
-    Bell,
     AlertCircle,
     CheckCircle,
     Clock,
-    ExternalLink,
-    HelpCircle,
-    Calculator,
-    Scale,
-    Code2,
     ChevronDown,
-    TrendingUp,
-    Coins,
-    GitCompareArrows,
-    Star,
-    MessageCircle
+    Globe,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -40,6 +24,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 import { NetworkToggle } from '@/components/NetworkToggle';
+import { useNetworkData, NetworkType } from '@/contexts/NetworkDataContext';
 import { cn } from '@/lib/utils';
 import {
     Dialog,
@@ -47,11 +32,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
 import {
     Sheet,
     SheetContent,
@@ -64,7 +44,52 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
+import { navGroups } from '@/config/navigation';
+import { useFavorites } from '@/hooks/useFavorites';
+
+// Compact network dropdown for mobile sidebar
+function MobileNetworkDropdown() {
+    const { network, setNetwork, networkStats } = useNetworkData();
+
+    const options: { value: NetworkType; label: string; color: string; dotColor: string; count: number }[] = [
+        { value: 'devnet', label: 'Dev', color: 'text-emerald-400', dotColor: 'bg-emerald-400', count: networkStats.devnet },
+        { value: 'mainnet', label: 'Main', color: 'text-blue-400', dotColor: 'bg-blue-400', count: networkStats.mainnet },
+        { value: 'all', label: 'All', color: 'text-purple-400', dotColor: 'bg-purple-400', count: networkStats.total },
+    ];
+
+    const currentOption = options.find(o => o.value === network) || options[0];
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-10 gap-1.5 px-2.5 shrink-0">
+                    <span className={cn("w-2 h-2 rounded-full", currentOption.dotColor)} />
+                    <span className={cn("text-xs font-medium", currentOption.color)}>
+                        {currentOption.label}
+                    </span>
+                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[120px]" style={{ zIndex: 99999 }}>
+                {options.map((option) => (
+                    <DropdownMenuItem
+                        key={option.value}
+                        onClick={() => setNetwork(option.value)}
+                        className={cn(
+                            "gap-2 cursor-pointer",
+                            network === option.value && "bg-accent"
+                        )}
+                    >
+                        <span className={cn("w-2 h-2 rounded-full", option.dotColor)} />
+                        <span className={option.color}>{option.label}</span>
+                        <span className="ml-auto text-xs text-muted-foreground">({option.count})</span>
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
 
 
 interface HeaderProps {
@@ -85,86 +110,6 @@ interface HeaderProps {
     activitySlot?: React.ReactNode; // For ActivityDrawer component
 }
 
-const navGroups = [
-    {
-        label: 'Network',
-        items: [
-            { href: '/', label: 'Dashboard', icon: Activity },
-            { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-            { href: '/map', label: 'Map', icon: Map },
-            { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-            { href: '/watchlist', label: 'Watchlist', icon: Star },
-        ]
-    },
-    {
-        label: 'Token',
-        items: [
-            { href: '/trade', label: 'Trade XAND', icon: TrendingUp },
-            { href: '/staking', label: 'Stake SOL', icon: Coins },
-        ]
-    },
-    {
-        label: 'Tools',
-        items: [
-            { href: '/compare', label: 'Compare Nodes', icon: GitCompareArrows },
-            { href: '/calculator', label: 'ROI Calculator', icon: Calculator },
-            { href: '/widgets', label: 'Widgets', icon: Code2 },
-        ]
-    },
-    {
-        label: 'Resources',
-        items: [
-            { href: '/guide', label: 'Guide', icon: BookOpen },
-            { href: '/bots', label: 'Bots', icon: MessageCircle },
-        ]
-    }
-];
-
-function NavGroupDropdown({ group, pathname }: { group: typeof navGroups[0], pathname: string }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const isGroupActive = group.items.some(item => pathname === item.href);
-
-    return (
-        <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
-            <DropdownMenuTrigger asChild>
-                <Button
-                    variant="ghost"
-                    className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 h-auto font-medium text-sm data-[state=open]:bg-muted",
-                        isGroupActive ? "text-primary" : "text-muted-foreground"
-                    )}
-                    onMouseEnter={() => setIsOpen(true)}
-                    onMouseLeave={() => setIsOpen(false)}
-                >
-                    {group.label}
-                    <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-                align="start"
-                className="w-48"
-                onMouseEnter={() => setIsOpen(true)}
-                onMouseLeave={() => setIsOpen(false)}
-            >
-                {group.items.map((item) => (
-                    <DropdownMenuItem key={item.href} asChild>
-                        <Link
-                            href={item.href}
-                            className={cn(
-                                "flex items-center gap-2 cursor-pointer",
-                                pathname === item.href && "bg-primary/5 text-primary focus:bg-primary/10 focus:text-primary"
-                            )}
-                        >
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                        </Link>
-                    </DropdownMenuItem>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
-}
-
 export function Header({
     issueCount = 0,
     issues = [],
@@ -181,6 +126,7 @@ export function Header({
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const { favoritesCount } = useFavorites();
 
     // Handle keyboard shortcut for search (Cmd/Ctrl + K)
     useEffect(() => {
@@ -230,139 +176,37 @@ export function Header({
             case '/analytics': return 'Analytics';
             case '/map': return 'Global Map';
             case '/leaderboard': return 'Leaderboard';
-            case '/guide': return 'Staking Guide';
+            case '/operators': return 'Operators';
+            case '/watchlist': return 'Watchlist';
+            case '/about': return 'About XAND';
+            case '/compare': return 'Compare Nodes';
+            case '/calculator': return 'ROI Calculator';
             case '/widgets': return 'Widgets';
+            case '/guide': return 'Staking Guide';
+            case '/bots': return 'Bots';
             default: return 'pNode Watch';
-        }
-    };
-
-    const getSeverityIcon = (severity: string) => {
-        switch (severity) {
-            case 'high': return <AlertCircle className="h-4 w-4 text-destructive" />;
-            case 'medium': return <Clock className="h-4 w-4 text-amber-500" />;
-            default: return <CheckCircle className="h-4 w-4 text-muted-foreground" />;
         }
     };
 
     return (
         <>
-            <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <header style={{ zIndex: 1000 }} className="sticky top-0 w-full border-b border-border/40 backdrop-blur">
                 <div className="container flex h-14 items-center justify-between px-4">
-                    {/* Logo and Title */}
+                    {/* Left Side: Mobile Trigger & Page Title */}
                     <div className="flex items-center gap-4">
-                        <Link href="/" className="flex items-center gap-2.5 group">
-                            <div className="flex h-6 w-auto items-center justify-center overflow-hidden">
-                                <img src="/logo.png" alt="pNode Watch" className="h-6 w-auto object-contain dark:hidden" />
-                                <img src="/logo.png" alt="pNode Watch" className="h-6 w-auto object-contain hidden dark:block" />
-                            </div>
-                            <span className="font-semibold text-foreground" style={{ marginLeft: "-10px" }}>
-                                Node Watch
-                            </span>
-                        </Link>
-
-                        {/* Page Title with Version Badge */}
-                        <div className="hidden md:flex items-center gap-3 pl-4 border-l border-border/50">
-                            <span className="font-semibold">{getPageTitle()}</span>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 font-mono bg-muted/50">
-                                v2.4.1 Live
-                            </Badge>
-                        </div>
-                    </div>
-
-                    {/* Desktop Navigation */}
-                    <nav className="hidden min-[1121px]:flex items-center gap-1" data-tour="header">
-                        {navGroups.map((group) => {
-                            // Special handling for 'Network' group - render items directly on desktop
-                            if (group.label === 'Network') {
-                                return group.items.map((item) => (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        data-tour={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                                        className={cn(
-                                            "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
-                                            pathname === item.href
-                                                ? "bg-primary/10 text-primary"
-                                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                        )}
-                                    >
-                                        <item.icon className="h-4 w-4" />
-                                        {item.label}
-                                    </Link>
-                                ));
-                            }
-
-                            // Check if any item in this group is active
-                            if (group.items.length === 1) {
-                                const item = group.items[0];
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        className={cn(
-                                            "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
-                                            pathname === item.href
-                                                ? "bg-primary/10 text-primary"
-                                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                        )}
-                                    >
-                                        <item.icon className="h-4 w-4" />
-                                        {item.label}
-                                    </Link>
-                                );
-                            }
-
-                            return <NavGroupDropdown key={group.label} group={group} pathname={pathname} />;
-                        })}
-                    </nav>
-
-                    {/* Right Side Actions */}
-                    <div className="flex items-center gap-2">
-                        {/* Network Toggle */}
-                        <div className="hidden lg:block">
-                            <NetworkToggle />
-                        </div>
-                        <div className="hidden sm:block lg:hidden">
-                            <NetworkToggle compact />
-                        </div>
-
-                        {/* Search Button */}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="hidden sm:flex"
-                            onClick={() => setIsSearchOpen(true)}
-                            title="Search (Ctrl+K)"
-                        >
-                            <Search className="h-4 w-4" />
-                        </Button>
-
-                        {/* Activity Drawer (Live Feed) - Only on dashboard */}
-                        {activitySlot}
-
-                        {/* Install App Button */}
-                        <div className="hidden sm:block">
-                            <InstallAppButton />
-                        </div>
-
-                        {/* Notifications Bell */}
-                        <NotificationBell />
-
-                        <ThemeToggle />
-
-                        {/* Mobile Menu Sidebar */}
+                        {/* Mobile Menu Sidebar Trigger */}
                         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                             <SheetTrigger asChild>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="min-[1121px]:hidden"
+                                    className="lg:hidden -ml-2"
                                 >
                                     <Menu className="h-5 w-5" />
                                     <span className="sr-only">Toggle menu</span>
                                 </Button>
                             </SheetTrigger>
-                            <SheetContent side="left" className="w-80 p-0 flex flex-col">
+                            <SheetContent side="left" className="w-80 p-0 flex flex-col bg-background">
                                 <SheetHeader className="p-6 border-b">
                                     <div className="flex items-center gap-3">
                                         <div className="flex h-10 w-auto items-center justify-center overflow-hidden">
@@ -372,15 +216,15 @@ export function Header({
                                         <div>
                                             <SheetTitle className="text-left" style={{ marginLeft: "-10px" }}>Node Watch</SheetTitle>
                                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 font-mono mt-1">
-                                                v2.4.1 Live
+                                                v3.0.29 Live
                                             </Badge>
                                         </div>
                                     </div>
                                 </SheetHeader>
 
-                                {/* Mobile Search */}
-                                <div className="p-4 border-b">
-                                    <form onSubmit={handleSearch}>
+                                {/* Mobile Search + Network Dropdown Row */}
+                                <div className="p-4 border-b flex gap-2">
+                                    <form onSubmit={handleSearch} className="flex-1">
                                         <div className="relative">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                             <Input
@@ -394,6 +238,7 @@ export function Header({
                                             />
                                         </div>
                                     </form>
+                                    <MobileNetworkDropdown />
                                 </div>
 
                                 {/* Navigation Links - Scrollable */}
@@ -406,6 +251,7 @@ export function Header({
                                             {group.items.map((item) => {
                                                 const Icon = item.icon;
                                                 const isActive = pathname === item.href;
+                                                const isWatchlist = item.href === '/watchlist';
                                                 return (
                                                     <Link
                                                         key={item.href}
@@ -418,8 +264,20 @@ export function Header({
                                                                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                                         )}
                                                     >
-                                                        <Icon className="h-4 w-4" />
+                                                        <div className="relative">
+                                                            <Icon className="h-4 w-4" />
+                                                            {isWatchlist && favoritesCount > 0 && (
+                                                                <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">
+                                                                    {favoritesCount > 9 ? '9+' : favoritesCount}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         {item.label}
+                                                        {isWatchlist && favoritesCount > 0 && (
+                                                            <Badge variant="destructive" className="ml-auto h-5 px-1.5">
+                                                                {favoritesCount}
+                                                            </Badge>
+                                                        )}
                                                     </Link>
                                                 );
                                             })}
@@ -447,6 +305,43 @@ export function Header({
                                 </div>
                             </SheetContent>
                         </Sheet>
+
+                        {/* Page Title (Breadcrumb-ish) */}
+                        <div className="flex items-center gap-3">
+                            <span className="font-semibold text-lg sm:text-base">{getPageTitle()}</span>
+                        </div>
+                    </div>
+
+                    {/* Right Side Actions */}
+                    <div className="flex items-center gap-2">
+                        {/* Network Toggle */}
+                        <div className="hidden lg:block">
+                            <NetworkToggle />
+                        </div>
+
+                        {/* Search Button */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="hidden sm:flex"
+                            onClick={() => setIsSearchOpen(true)}
+                            title="Search (Ctrl+K)"
+                        >
+                            <Search className="h-4 w-4" />
+                        </Button>
+
+                        {/* Activity Drawer (Live Feed) - Only on dashboard */}
+                        {activitySlot}
+
+                        {/* Install App Button */}
+                        <div className="hidden sm:block">
+                            <InstallAppButton />
+                        </div>
+
+                        {/* Notifications Bell */}
+                        <NotificationBell />
+
+                        <ThemeToggle />
                     </div>
                 </div>
             </header>
@@ -482,3 +377,4 @@ export function Header({
         </>
     );
 }
+

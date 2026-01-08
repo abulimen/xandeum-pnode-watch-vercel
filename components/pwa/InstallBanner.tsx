@@ -75,8 +75,9 @@ export function InstallBanner({ className }: { className?: string }) {
     return (
         <div
             className={cn(
-                "fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm z-50",
-                "bg-card border rounded-xl shadow-lg p-4 animate-in slide-in-from-bottom-4 duration-300",
+                "fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm z-[9999]",
+                "rounded-xl border shadow-xl p-4 animate-in slide-in-from-bottom-4 duration-300",
+                "bg-background/95 backdrop-blur-xl",
                 className
             )}
         >

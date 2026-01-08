@@ -217,16 +217,24 @@ function getUserFriendlyMessage(error: Error, statusCode?: number): string {
 /**
  * Fetch nodes with retry logic and exponential backoff
  */
-async function fetchNodesWithRetry(attempt: number = 1): Promise<PNodeListResponse> {
+async function fetchNodesWithRetry(attempt: number = 1, network?: 'mainnet' | 'devnet' | 'all'): Promise<PNodeListResponse> {
     try {
-        const response = await fetch('/api/prpc', {
+        // Build request body with optional network filter
+        const requestBody: any = {
+            method: 'get-pods-with-stats',
+        };
+
+        // If using network filter, append to URL for server-side filtering
+        const url = network && network !== 'all'
+            ? `/api/prpc?network=${network}`
+            : '/api/prpc';
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                method: 'get-pods-with-stats',
-            }),
+            body: JSON.stringify(requestBody),
         });
 
         const statusCode = response.status;
@@ -301,7 +309,7 @@ async function fetchNodesWithRetry(attempt: number = 1): Promise<PNodeListRespon
             console.warn(`[prpcService] Attempt ${attempt} failed, retrying in ${delay}ms...`);
             await sleep(delay);
 
-            return fetchNodesWithRetry(attempt + 1);
+            return fetchNodesWithRetry(attempt + 1, network);
         }
 
         // All retries exhausted or non-retryable error
@@ -326,8 +334,8 @@ async function fetchNodesWithRetry(attempt: number = 1): Promise<PNodeListRespon
 /**
  * Fetch nodes via the API proxy route with retry logic
  */
-export async function fetchNodes(): Promise<PNodeListResponse> {
-    return fetchNodesWithRetry(1);
+export async function fetchNodes(network?: 'mainnet' | 'devnet' | 'all'): Promise<PNodeListResponse> {
+    return fetchNodesWithRetry(1, network);
 }
 
 export const prpcService = {

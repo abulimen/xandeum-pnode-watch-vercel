@@ -12,6 +12,8 @@ import { TourButton } from "@/components/tour/TourButton";
 import { PagePreloader } from "@/components/PagePreloader";
 import { DataLoadingSignal } from "@/components/DataLoadingSignal";
 
+import { Sidebar } from "@/components/layout/Sidebar";
+
 const geistSans = Geist({
     variable: "--font-geist-sans",
     subsets: ["latin"],
@@ -33,6 +35,7 @@ export const metadata: Metadata = {
     title: "pNode Watch - Xandeum Network Analytics",
     description: "Real-time monitoring and analytics for Xandeum's distributed storage network",
     keywords: ["pNode Watch", "Xandeum", "pNode", "analytics", "blockchain", "storage", "Solana"],
+    manifest: "/manifest.json",
     icons: {
         icon: [
             { url: "/pnode_favicon.jpg", type: "image/jpeg" },
@@ -67,14 +70,29 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" suppressHydrationWarning>
+            <head>
+                <link rel="manifest" href="/manifest.json" />
+            </head>
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
             >
                 <Providers>
-                    <PagePreloader />
-                    <DataLoadingSignal />
-                    <ServiceWorkerRegistration />
-                    {children}
+                    <div className="flex h-screen overflow-hidden">
+                        {/* Sidebar - Visible on Desktop */}
+                        <Sidebar />
+
+                        {/* Main Content Area */}
+                        <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+                            <PagePreloader />
+                            <DataLoadingSignal />
+                            <ServiceWorkerRegistration />
+
+                            <div className="flex-1 overflow-y-auto overflow-x-hidden w-full">
+                                {children}
+                            </div>
+                        </div>
+                    </div>
+
                     <Toaster />
                     <InstallBanner />
                     <InstallPromptModal />

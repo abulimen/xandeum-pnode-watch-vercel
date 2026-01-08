@@ -23,17 +23,39 @@ const NetworkContext = createContext<NetworkContextType | undefined>(undefined);
 
 const NETWORK_STORAGE_KEY = 'pnode-watch-network';
 
-interface NetworkCreditsData {
+interface NetworkData {
     devnetPods: Set<string>;
     mainnetPods: Set<string>;
+    allPodPubkeys: string[]; // All pods from pRPC
 }
 
-async function fetchNetworkCredits(): Promise<NetworkCreditsData> {
-    const [devnetRes, mainnetRes] = await Promise.all([
+/**
+ * Fetch network data from both pRPC (for total counts) and credits (for network membership)
+ */
+async function fetchNetworkData(): Promise<NetworkData> {
+    // Fetch all three in parallel
+    const [prpcRes, devnetRes, mainnetRes] = await Promise.all([
+        fetch('/api/prpc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ method: 'get-pods-with-stats' }),
+        }),
         fetch('/api/credits?network=devnet'),
         fetch('/api/credits?network=mainnet'),
     ]);
 
+    // Get all pod pubkeys from pRPC
+    const allPodPubkeys: string[] = [];
+    if (prpcRes.ok) {
+        const prpcData = await prpcRes.json();
+        if (prpcData.success && prpcData.data?.pods) {
+            for (const pod of prpcData.data.pods) {
+                if (pod.pubkey) allPodPubkeys.push(pod.pubkey);
+            }
+        }
+    }
+
+    // Get credits data (determines network membership)
     const devnetPods = new Set<string>();
     const mainnetPods = new Set<string>();
 
@@ -55,14 +77,15 @@ async function fetchNetworkCredits(): Promise<NetworkCreditsData> {
         }
     }
 
-    console.log(`[network] Loaded ${devnetPods.size} devnet pods, ${mainnetPods.size} mainnet pods`);
-    return { devnetPods, mainnetPods };
+    console.log(`[network] Loaded ${allPodPubkeys.length} total pods, ${devnetPods.size} devnet, ${mainnetPods.size} mainnet`);
+    return { devnetPods, mainnetPods, allPodPubkeys };
 }
 
 export function NetworkProvider({ children }: { children: React.ReactNode }) {
     const [network, setNetworkState] = useState<NetworkType>('all');
     const [devnetPods, setDevnetPods] = useState<Set<string>>(new Set());
     const [mainnetPods, setMainnetPods] = useState<Set<string>>(new Set());
+    const [allPodPubkeys, setAllPodPubkeys] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     // Load persisted network preference
@@ -73,12 +96,13 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    // Fetch network pod data
+    // Fetch network data
     useEffect(() => {
-        fetchNetworkCredits()
-            .then(({ devnetPods, mainnetPods }) => {
+        fetchNetworkData()
+            .then(({ devnetPods, mainnetPods, allPodPubkeys }) => {
                 setDevnetPods(devnetPods);
                 setMainnetPods(mainnetPods);
+                setAllPodPubkeys(allPodPubkeys);
             })
             .catch(err => console.error('[network] Failed to fetch network data:', err))
             .finally(() => setIsLoading(false));
@@ -96,19 +120,20 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
         return networks;
     }, [devnetPods, mainnetPods]);
 
+    // Calculate network stats based on pRPC pods filtered by credit membership
     const networkStats = useMemo(() => {
-        const bothCount = [...devnetPods].filter(p => mainnetPods.has(p)).length;
-        const devnetOnly = devnetPods.size;
-        const mainnetOnly = mainnetPods.size;
-        // Total unique pods across both networks
-        const allPods = new Set([...devnetPods, ...mainnetPods]);
+        // Count pRPC pods that have credits on each network
+        const devnetCount = allPodPubkeys.filter(pk => devnetPods.has(pk)).length;
+        const mainnetCount = allPodPubkeys.filter(pk => mainnetPods.has(pk)).length;
+        const bothCount = allPodPubkeys.filter(pk => devnetPods.has(pk) && mainnetPods.has(pk)).length;
+
         return {
-            devnet: devnetOnly,
-            mainnet: mainnetOnly,
+            devnet: devnetCount,
+            mainnet: mainnetCount,
             both: bothCount,
-            total: allPods.size,
+            total: allPodPubkeys.length, // Total from pRPC, same as StatsCards
         };
-    }, [devnetPods, mainnetPods]);
+    }, [allPodPubkeys, devnetPods, mainnetPods]);
 
     return (
         <NetworkContext.Provider value={{
@@ -132,3 +157,4 @@ export function useNetwork() {
     }
     return context;
 }
+

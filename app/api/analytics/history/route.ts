@@ -21,8 +21,9 @@ export async function GET(request: NextRequest) {
             const history = await getNodeHistory(nodeId, days);
             return NextResponse.json({ success: true, data: history });
         } else {
-            // Network history
-            const history = await getNetworkHistory(days);
+            // Network history - optionally filter by network (mainnet/devnet)
+            const networkFilter = searchParams.get('network') as 'mainnet' | 'devnet' | null;
+            const history = await getNetworkHistory(days, networkFilter || undefined);
             return NextResponse.json({ success: true, data: history });
         }
     } catch (error) {

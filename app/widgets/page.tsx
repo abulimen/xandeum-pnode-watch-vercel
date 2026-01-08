@@ -253,7 +253,7 @@ export default function WidgetsPage() {
 
             <main className="flex-1 container px-4 py-6">
                 {/* Page Header */}
-                <div className="mb-8">
+                <div className="mb-8" data-tour="widgets-header">
                     <div className="flex items-center gap-3 mb-2">
                         <div className="p-2 rounded-lg bg-primary/10">
                             <Code2 className="h-6 w-6 text-primary" />
@@ -268,7 +268,7 @@ export default function WidgetsPage() {
                 </div>
 
                 {/* Instructions */}
-                <Card className="mb-6 bg-primary/5 border-primary/20">
+                <Card className="mb-6 bg-primary/5 border-primary/20" data-tour="widgets-instructions">
                     <CardContent className="pt-6">
                         <h3 className="font-semibold mb-2">How to Use</h3>
                         <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
@@ -281,7 +281,7 @@ export default function WidgetsPage() {
                 </Card>
 
                 {/* Widgets Grid */}
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid gap-6 lg:grid-cols-2" data-tour="widgets-gallery">
                     {widgets.map(widget => (
                         <WidgetPreview key={widget.id} widget={widget} />
                     ))}

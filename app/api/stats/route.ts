@@ -3,8 +3,9 @@
  * Uses the EXACT SAME scoring logic as the leaderboard page via analyticsService
  */
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { getTopStakingNodes, calculateNetworkStats } from '@/lib/services/analyticsService';
+import { creditsService } from '@/lib/services/creditsService';
 import { PNode } from '@/types/pnode';
 
 interface RawPod {
@@ -117,14 +118,22 @@ function transformPodToNode(pod: RawPod, responseTime: number, maxTimestamp: num
     };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const searchParams = request.nextUrl.searchParams;
+        const targetNetwork = searchParams.get('network'); // 'devnet', 'mainnet', or 'all' (default)
+
         // Call the internal pRPC API with absolute URL (server-side needs this)
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://' + process.env.BASE_URL || 'http://localhost:3000';
 
         let response;
         try {
-            response = await fetch(`${baseUrl}/api/prpc`, {
+            // Pass network filter to prpc so it does server-side filtering (SAME as dashboard)
+            const prpcUrl = targetNetwork && targetNetwork !== 'all'
+                ? `${baseUrl}/api/prpc?network=${targetNetwork}`
+                : `${baseUrl}/api/prpc`;
+
+            response = await fetch(prpcUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ method: 'get-pods-with-stats' }),
@@ -180,18 +189,28 @@ export async function GET() {
             });
         }
 
-        // Fetch credits from Xandeum API
+        // Fetch credits using creditsService (handles network-specific URLs correctly)
         let creditsMap = new Map<string, number>();
+        let filteredPubkeys: Set<string> | null = null;
+
         try {
-            const creditsResponse = await fetch('https://podcredits.xandeum.network/api/pods-credits', { next: { revalidate: 60 } });
-            if (creditsResponse.ok) {
-                const json = await creditsResponse.json();
-                if (json.status === 'success' && Array.isArray(json.pods_credits)) {
-                    for (const item of json.pods_credits) {
-                        if (item.pod_id && typeof item.credits === 'number') {
-                            creditsMap.set(item.pod_id, item.credits);
-                        }
+            // Determine which network to fetch credits for
+            const creditsNetwork = (targetNetwork === 'devnet' || targetNetwork === 'mainnet')
+                ? targetNetwork
+                : 'all';
+
+            const creditsResult = await creditsService.getCredits(creditsNetwork);
+
+            if (creditsResult?.pods_credits) {
+                for (const item of creditsResult.pods_credits) {
+                    if (item.pod_id && typeof item.credits === 'number') {
+                        creditsMap.set(item.pod_id, item.credits);
                     }
+                }
+
+                // If filtering by network, use the credits result as the source of truth
+                if (targetNetwork && targetNetwork !== 'all') {
+                    filteredPubkeys = new Set(creditsResult.pods_credits.map(p => p.pod_id));
                 }
             }
         } catch (creditsError) {
@@ -204,20 +223,28 @@ export async function GET() {
         // Transform pods to PNodes (EXACT MATCH with prpcService)
         const nodes: PNode[] = validPods.map(pod => {
             const node = transformPodToNode(pod, responseTime, maxTimestamp);
-            // Enrich with credits
+            // Enrich with credits from the correct network
             node.credits = creditsMap.get(node.publicKey) || 0;
             return node;
         });
 
-        // Now use the EXACT SAME functions as the leaderboard page
-        const networkStats = calculateNetworkStats(nodes);
+        // Filter by network if specified (using the credits-based membership from above)
+        let filteredNodes = nodes;
+        if (filteredPubkeys) {
+            filteredNodes = nodes.filter(node => filteredPubkeys!.has(node.publicKey));
+        }
 
-        // Calculate avg credits
+        // Now use the EXACT SAME functions as the leaderboard page
+        const networkStats = calculateNetworkStats(filteredNodes);
+
+        // Calculate avg credits (from the network-specific credits)
         const totalCredits = Array.from(creditsMap.values()).reduce((sum, c) => sum + c, 0);
         const avgCredits = creditsMap.size > 0 ? Math.round(totalCredits / creditsMap.size) : 0;
 
-        // Get top nodes by CREDITS (not staking score)
-        const topNodesList = [...nodes]
+        // Get top nodes by CREDITS - include ALL nodes with credits (same as leaderboard page)
+        // Previously filtered for online only, but most mainnet nodes are offline
+        const topNodesList = [...filteredNodes]
+            .filter(n => (n.credits || 0) > 0) // Only include nodes with credits
             .sort((a, b) => (b.credits || 0) - (a.credits || 0))
             .slice(0, 5);
 

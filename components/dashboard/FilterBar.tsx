@@ -5,7 +5,7 @@
 
 'use client';
 
-import { Search, X, Globe, Shield, ShieldOff, Filter, Check, Heart } from 'lucide-react';
+import { Search, X, Globe, Shield, ShieldOff, Filter, Check, LayoutGrid, List } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,7 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import { StatusFilter } from '@/types/filters';
-import { AccessFilter, VersionTypeFilter } from '@/hooks/useNodeFilters';
+import { AccessFilter } from '@/hooks/useNodeFilters';
 import { useCallback, useState, useEffect } from 'react';
 
 interface FilterBarProps {
@@ -41,8 +41,8 @@ interface FilterBarProps {
     onCountryFilterChange: (country: string) => void;
     cityFilter: string;
     onCityFilterChange: (city: string) => void;
-    versionTypeFilter: VersionTypeFilter;
-    onVersionTypeFilterChange: (filter: VersionTypeFilter) => void;
+    versionFilter: string;
+    onVersionFilterChange: (filter: string) => void;
     accessFilter: AccessFilter;
     onAccessFilterChange: (access: AccessFilter) => void;
     favoritesOnly: boolean;
@@ -54,8 +54,11 @@ interface FilterBarProps {
     availableRegions: string[];
     availableCountries: string[];
     availableCities: string[];
+    availableVersions: string[];
     hasActiveFilters: boolean;
     filteredNodes?: PNode[]; // For export
+    viewMode?: 'table' | 'cards';
+    onViewModeChange?: (mode: 'table' | 'cards') => void;
 }
 
 export function FilterBar({
@@ -69,8 +72,8 @@ export function FilterBar({
     onCountryFilterChange,
     cityFilter,
     onCityFilterChange,
-    versionTypeFilter,
-    onVersionTypeFilterChange,
+    versionFilter,
+    onVersionFilterChange,
     accessFilter,
     onAccessFilterChange,
     favoritesOnly,
@@ -82,8 +85,11 @@ export function FilterBar({
     availableRegions,
     availableCountries,
     availableCities,
+    availableVersions,
     hasActiveFilters,
     filteredNodes,
+    viewMode = 'table',
+    onViewModeChange,
 }: FilterBarProps) {
     const [localSearch, setLocalSearch] = useState(searchQuery);
 
@@ -210,21 +216,29 @@ export function FilterBar({
                     />
                 </div>
 
-                {/* Watchlist Toggle */}
-                <Button
-                    variant={favoritesOnly ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => onFavoritesOnlyChange(!favoritesOnly)}
-                    className="gap-2 shrink-0"
-                >
-                    <Heart className={`h-4 w-4 ${favoritesOnly ? 'fill-current' : ''}`} />
-                    Watchlist
-                    {favoritesCount > 0 && (
-                        <Badge variant={favoritesOnly ? "secondary" : "outline"} className="h-5 px-1.5">
-                            {favoritesCount}
-                        </Badge>
-                    )}
-                </Button>
+                {/* View Mode Toggle - Desktop */}
+                {onViewModeChange && (
+                    <div className="hidden lg:flex items-center rounded-lg border bg-muted/50 p-1">
+                        <Button
+                            variant={viewMode === 'table' ? 'default' : 'ghost'}
+                            size="sm"
+                            className="h-8 px-3 gap-2"
+                            onClick={() => onViewModeChange('table')}
+                        >
+                            <List className="h-4 w-4" />
+                            Table
+                        </Button>
+                        <Button
+                            variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                            size="sm"
+                            className="h-8 px-3 gap-2"
+                            onClick={() => onViewModeChange('cards')}
+                        >
+                            <LayoutGrid className="h-4 w-4" />
+                            Cards
+                        </Button>
+                    </div>
+                )}
 
                 {/* Mobile/Tablet: Filter Button + Export */}
                 <div className="flex items-center gap-2 lg:hidden">
@@ -290,24 +304,17 @@ export function FilterBar({
                         </SelectContent>
                     </Select>
 
-                    <Select value={versionTypeFilter} onValueChange={(value) => onVersionTypeFilterChange(value as VersionTypeFilter)}>
+                    <Select value={versionFilter} onValueChange={onVersionFilterChange}>
                         <SelectTrigger className="w-[140px] bg-background">
                             <SelectValue placeholder="Version" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Versions</SelectItem>
-                            <SelectItem value="hide-experimental">
-                                <div className="flex items-center gap-2">
-                                    <Check className="h-3 w-3 text-emerald-500" />
-                                    Hide Experimental
-                                </div>
-                            </SelectItem>
-                            <SelectItem value="mainnet">Mainnet Only</SelectItem>
-                            <SelectItem value="trynet">
-                                <div className="flex items-center gap-2 text-amber-500">
-                                    Trynet Only
-                                </div>
-                            </SelectItem>
+                            {availableVersions.map((version) => (
+                                <SelectItem key={version} value={version}>
+                                    {version}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
 

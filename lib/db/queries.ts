@@ -9,6 +9,7 @@ import { getSupabase, isSupabaseConfigured } from './index';
 export interface SnapshotRecord {
     id: number;
     timestamp: string;
+    network: 'mainnet' | 'devnet';
     total_nodes: number;
     online_nodes: number;
     degraded_nodes: number;
@@ -66,6 +67,7 @@ export interface UserAlert {
  * Create a new network snapshot
  */
 export async function createSnapshot(data: {
+    network?: 'mainnet' | 'devnet';
     total_nodes: number;
     online_nodes: number;
     degraded_nodes: number;
@@ -79,9 +81,14 @@ export async function createSnapshot(data: {
 }): Promise<number> {
     const supabase = getSupabase();
 
+    const insertData = {
+        ...data,
+        network: data.network || 'devnet',
+    };
+
     const { data: result, error } = await supabase
         .from('snapshots')
-        .insert(data)
+        .insert(insertData)
         .select('id')
         .single();
 
@@ -136,8 +143,13 @@ export async function insertNodeSnapshots(snapshotId: number, nodes: Array<{
 
 /**
  * Get network history for the last N days
+ * @param days - Number of days to look back
+ * @param network - Optional network filter ('mainnet', 'devnet', or undefined for all)
  */
-export async function getNetworkHistory(days: number = 7): Promise<SnapshotRecord[]> {
+export async function getNetworkHistory(
+    days: number = 7,
+    network?: 'mainnet' | 'devnet'
+): Promise<SnapshotRecord[]> {
     if (!isSupabaseConfigured()) {
         console.warn('[db] Supabase not configured, returning empty history');
         return [];
@@ -147,11 +159,18 @@ export async function getNetworkHistory(days: number = 7): Promise<SnapshotRecor
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('snapshots')
         .select('*')
         .gte('timestamp', cutoffDate.toISOString())
         .order('timestamp', { ascending: true });
+
+    // Filter by network if specified
+    if (network) {
+        query = query.eq('network', network);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('[db] getNetworkHistory error:', error);

@@ -105,6 +105,10 @@ export async function POST(request: NextRequest) {
         const body = await request.json().catch(() => ({}));
         const { method = 'get-pods-with-stats' } = body;
 
+        // Get network filter from URL query params
+        const { searchParams } = new URL(request.url);
+        const networkFilter = searchParams.get('network') as 'mainnet' | 'devnet' | null;
+
         if (SEED_IPS.length === 0) {
             return NextResponse.json(
                 { error: 'No seed nodes configured', success: false },
@@ -129,11 +133,45 @@ export async function POST(request: NextRequest) {
                 const totalTime = Math.round(performance.now() - startTime);
                 console.log(`[prpc] Success from ${successResult.seedIP} in ${successResult.responseTime}ms (total: ${totalTime}ms)`);
 
+                let pods = successResult.data?.pods || [];
+
+                // Apply server-side network filtering if specified
+                if (networkFilter && (networkFilter === 'mainnet' || networkFilter === 'devnet')) {
+                    console.log(`[prpc] Filtering for network: ${networkFilter}`);
+
+                    // Fetch network credits data to determine network membership
+                    try {
+                        const creditsRes = await fetch(
+                            `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/credits?network=${networkFilter}`,
+                            { cache: 'no-store' }
+                        );
+
+                        if (creditsRes.ok) {
+                            const creditsData = await creditsRes.json();
+                            const networkPodIds = new Set<string>();
+
+                            if (creditsData.pods_credits) {
+                                for (const pod of creditsData.pods_credits) {
+                                    if (pod.pod_id) networkPodIds.add(pod.pod_id);
+                                }
+                            }
+
+                            // Filter pods to only those in the specified network
+                            const originalCount = pods.length;
+                            pods = pods.filter((p: any) => networkPodIds.has(p.pubkey));
+                            console.log(`[prpc] Filtered ${originalCount} -> ${pods.length} pods for ${networkFilter}`);
+                        }
+                    } catch (filterError) {
+                        console.warn('[prpc] Network filter failed, returning all pods:', filterError);
+                    }
+                }
+
                 return NextResponse.json({
                     success: true,
-                    data: successResult.data,
+                    data: { ...successResult.data, pods },
                     responseTime: successResult.responseTime,
                     seedIP: successResult.seedIP,
+                    networkFilter: networkFilter || 'all',
                 });
             }
 

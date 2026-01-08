@@ -163,7 +163,7 @@ export default function ComparePage() {
 
             <main className="flex-1 container mx-auto px-4 py-6 pb-20 max-w-full overflow-x-hidden">
                 {/* Page Header */}
-                <div className="mb-6">
+                <div className="mb-6" data-tour="compare-header">
                     <div className="flex items-center gap-3 mb-2">
                         <GitCompareArrows className="h-8 w-8 text-primary" />
                         <h1 className="text-3xl font-bold">Compare Nodes</h1>
@@ -174,7 +174,7 @@ export default function ComparePage() {
                 </div>
 
                 {/* Node Selector */}
-                <Card className="mb-6" data-tour="compare-search">
+                <Card className="mb-6 relative z-10" data-tour="compare-search">
                     <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                             <div>
@@ -212,7 +212,7 @@ export default function ComparePage() {
 
                             {/* Add node button/search */}
                             {selectedNodes.length < MAX_NODES && (
-                                <div className="relative">
+                                <div className="relative z-50">
                                     {isSearchOpen ? (
                                         <div className="flex items-center gap-2">
                                             <div className="relative">
@@ -249,7 +249,7 @@ export default function ComparePage() {
 
                                     {/* Search results dropdown */}
                                     {isSearchOpen && (
-                                        <Card className="absolute top-12 left-0 z-50 w-80 shadow-lg">
+                                        <Card className="absolute top-12 left-0 z-[9999] w-80 shadow-lg bg-background border">
                                             <ScrollArea className="h-64">
                                                 <div className="p-2">
                                                     {isLoading ? (
@@ -475,7 +475,7 @@ export default function ComparePage() {
                         </div>
 
                         {/* Heatmap Comparison Table */}
-                        <Card className="lg:col-span-2">
+                        <Card className="lg:col-span-2" data-tour="compare-heatmap">
                             <CardHeader className="pb-2">
                                 <CardTitle className="flex items-center gap-2 text-base">
                                     <BarChart3 className="h-4 w-4" />
@@ -565,7 +565,7 @@ export default function ComparePage() {
                         </Card>
 
                         {/* AI Compare */}
-                        <Card className="lg:col-span-2">
+                        <Card className="lg:col-span-2" data-tour="compare-ai">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <Sparkles className="h-5 w-5 text-primary" />

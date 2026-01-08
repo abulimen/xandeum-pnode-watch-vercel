@@ -37,7 +37,7 @@ async function fetchTokenData(): Promise<TokenStats> {
 }
 
 export function useTokenData() {
-    const { data, isLoading, isError, error, refetch } = useQuery({
+    const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
         queryKey: ['token-data'],
         queryFn: fetchTokenData,
         staleTime: 60 * 1000, // 1 minute
@@ -47,6 +47,7 @@ export function useTokenData() {
     return {
         tokenData: data,
         isLoading,
+        isRefetching,
         isError,
         error,
         refetch,

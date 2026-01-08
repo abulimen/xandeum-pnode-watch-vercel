@@ -194,14 +194,15 @@ export default function LeaderboardPage() {
     const { nodesWithLocation } = useNodeLocations(enrichedNodes);
 
     // Different leaderboard categories - use nodes with location data
+    // Show all nodes with credits (regardless of online status)
     const leaderboards = useMemo(() => {
-        const online = nodesWithLocation.filter(n => n.status !== 'offline');
+        const ranked = nodesWithLocation.filter(n => (n.credits ?? 0) > 0);
 
         return {
-            overall: [...online].sort((a, b) => (b.credits ?? 0) - (a.credits ?? 0)).slice(0, 20),
-            uptime: [...online].sort((a, b) => b.uptime - a.uptime).slice(0, 20),
-            storage: [...online].sort((a, b) => (b.storage.total || 0) - (a.storage.total || 0)).slice(0, 20),
-            duration: [...online].sort((a, b) => (b.uptimeSeconds || 0) - (a.uptimeSeconds || 0)).slice(0, 20),
+            overall: [...ranked].sort((a, b) => (b.credits ?? 0) - (a.credits ?? 0)).slice(0, 20),
+            uptime: [...ranked].sort((a, b) => b.uptime - a.uptime).slice(0, 20),
+            storage: [...ranked].sort((a, b) => (b.storage.total || 0) - (a.storage.total || 0)).slice(0, 20),
+            duration: [...ranked].sort((a, b) => (b.uptimeSeconds || 0) - (a.uptimeSeconds || 0)).slice(0, 20),
         };
     }, [nodesWithLocation]);
 
@@ -242,7 +243,7 @@ export default function LeaderboardPage() {
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-background border px-4 py-2 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-background border px-4 py-2 rounded-lg shadow-sm" data-tour="leaderboard-stats">
                         <Activity className="h-4 w-4 text-emerald-500" />
                         <span>{leaderboards.overall.length} ranked nodes</span>
                     </div>
@@ -251,8 +252,8 @@ export default function LeaderboardPage() {
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                     <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid p-1 bg-muted/50" data-tour="leaderboard-tabs">
                         <TabsTrigger value="overall" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                            <Target className="h-4 w-4" />
-                            <span className="hidden sm:inline">Overall Score</span>
+                            <Trophy className="h-4 w-4" />
+                            <span className="hidden sm:inline">Credit Score</span>
                         </TabsTrigger>
                         <TabsTrigger value="uptime" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                             <TrendingUp className="h-4 w-4" />
@@ -281,7 +282,7 @@ export default function LeaderboardPage() {
                                 {isLoading ? (
                                     <LeaderboardSkeleton />
                                 ) : (
-                                    <div className="grid gap-3">
+                                    <div className="grid gap-3" data-tour="leaderboard-list">
                                         {leaderboards.overall.map((node, index) => (
                                             <LeaderboardEntry
                                                 key={node.id}

@@ -73,34 +73,42 @@ export function PagePreloader() {
                         }} />
                     </div>
 
-                    {/* Floating particles */}
+                    {/* Floating particles - uses deterministic values to avoid hydration mismatch */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                        {[...Array(25)].map((_, i) => (
-                            <motion.div
-                                key={i}
-                                className="absolute rounded-full"
-                                style={{
-                                    width: `${3 + Math.random() * 4}px`,
-                                    height: `${3 + Math.random() * 4}px`,
-                                    background: colors.particleColors[i % 3],
-                                    left: `${Math.random() * 100}%`,
-                                    top: `${Math.random() * 100}%`,
-                                    filter: 'blur(0.5px)',
-                                }}
-                                animate={{
-                                    y: [0, -40, 0],
-                                    x: [0, Math.random() * 20 - 10, 0],
-                                    opacity: isDark ? [0.1, 0.6, 0.1] : [0.15, 0.4, 0.15],
-                                    scale: [1, 1.3, 1],
-                                }}
-                                transition={{
-                                    duration: 3 + Math.random() * 3,
-                                    repeat: Infinity,
-                                    delay: Math.random() * 3,
-                                    ease: 'easeInOut',
-                                }}
-                            />
-                        ))}
+                        {[...Array(25)].map((_, i) => {
+                            // Deterministic pseudo-random values based on index
+                            const seed1 = ((i * 17 + 7) % 100) / 100;
+                            const seed2 = ((i * 31 + 13) % 100) / 100;
+                            const seed3 = ((i * 23 + 3) % 100) / 100;
+                            const seed4 = ((i * 41 + 19) % 100) / 100;
+
+                            return (
+                                <motion.div
+                                    key={i}
+                                    className="absolute rounded-full"
+                                    style={{
+                                        width: `${3 + seed1 * 4}px`,
+                                        height: `${3 + seed2 * 4}px`,
+                                        background: colors.particleColors[i % 3],
+                                        left: `${seed3 * 100}%`,
+                                        top: `${seed4 * 100}%`,
+                                        filter: 'blur(0.5px)',
+                                    }}
+                                    animate={{
+                                        y: [0, -40, 0],
+                                        x: [0, seed1 * 20 - 10, 0],
+                                        opacity: isDark ? [0.1, 0.6, 0.1] : [0.15, 0.4, 0.15],
+                                        scale: [1, 1.3, 1],
+                                    }}
+                                    transition={{
+                                        duration: 3 + seed2 * 3,
+                                        repeat: Infinity,
+                                        delay: seed3 * 3,
+                                        ease: 'easeInOut',
+                                    }}
+                                />
+                            );
+                        })}
                     </div>
 
                     {/* Main content */}

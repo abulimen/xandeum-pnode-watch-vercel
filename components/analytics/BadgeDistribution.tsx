@@ -87,7 +87,7 @@ export function BadgeDistribution({ nodes, isLoading }: BadgeDistributionProps) 
     const definitions = badgeService.BADGE_DEFINITIONS;
 
     return (
-        <Card className="border-none shadow-md h-full">
+        <Card className="shadow-md h-full">
             <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                     <Award className="h-5 w-5 text-amber-500" />

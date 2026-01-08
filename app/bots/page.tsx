@@ -43,7 +43,7 @@ export default function BotsPage() {
             <Header />
             <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
                 {/* Hero Section */}
-                <div className="text-center mb-12">
+                <div className="text-center mb-12" data-tour="bots-header">
                     <div className="flex justify-center gap-4 mb-6">
                         <div className="p-4 rounded-2xl bg-[#5865F2]/10 border border-[#5865F2]/20">
                             <DiscordIcon className="w-12 h-12 text-[#5865F2]" />
@@ -62,7 +62,7 @@ export default function BotsPage() {
                 </div>
 
                 {/* Bot Cards */}
-                <div className="grid md:grid-cols-2 gap-6 mb-12">
+                <div className="grid md:grid-cols-2 gap-6 mb-12" data-tour="bots-cards">
                     {/* Telegram Bot */}
                     <Card className="border-[#0088cc]/30 bg-gradient-to-br from-[#0088cc]/5 to-transparent hover:border-[#0088cc]/50 transition-colors">
                         <CardHeader>
@@ -141,7 +141,7 @@ export default function BotsPage() {
                 </div>
 
                 {/* Commands Section */}
-                <Card className="mb-12">
+                <Card className="mb-12" data-tour="bots-commands">
                     <CardHeader>
                         <CardTitle className="text-2xl flex items-center gap-2">
                             <Bot className="w-6 h-6" />
